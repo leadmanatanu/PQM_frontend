@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from 'react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { Metadata } from 'next';
 import Button from '@mui/material/Button';
 import Stack from '@mui/material/Stack';
@@ -19,6 +19,7 @@ import { DownloadIcon } from '@phosphor-icons/react/dist/ssr/Download';
 import { PlusIcon } from '@phosphor-icons/react/dist/ssr/Plus';
 import { UploadIcon } from '@phosphor-icons/react/dist/ssr/Upload';
 import dayjs from 'dayjs';
+import * as signalR from '@microsoft/signalr';
 import { config } from '@/config';
 import { DevicesFilters } from '@/components/dashboard/device/devices-filters';
 import { DevicesTable } from '@/components/dashboard/device/devices-table';
@@ -26,6 +27,8 @@ import { AddDeviceForm } from '@/components/dashboard/device/add-device-form';
 import type { Device } from '@/components/dashboard/device/devices-table';
 import { fetchDevices, deleteDevice } from '../../../api/device'
 import * as XLSX from 'xlsx';
+
+
 
 function applyPagination(rows: Device[], page: number, rowsPerPage: number): Device[] {
     return rows.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
@@ -42,7 +45,9 @@ export default function Page(): React.JSX.Element {
   const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error'>('success');
   const page = 0;
   const rowsPerPage = 10;
+  const connectionRef = useRef<signalR.HubConnection | null>(null);
 
+  // ---- Fetch devices on mount ----
   useEffect(() => {
     const loadDevices = async () => {
       setLoading('fetch');
@@ -59,6 +64,51 @@ export default function Page(): React.JSX.Element {
       }
     };
     loadDevices();
+  }, []);
+
+  // ---- SignalR real-time connection ----
+  useEffect(() => {
+    const apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5000';
+    const hubUrl = `${apiBase}/hubs/device`;
+
+    const connection = new signalR.HubConnectionBuilder()
+      .withUrl(hubUrl)
+      .withAutomaticReconnect()
+      .configureLogging(signalR.LogLevel.Warning)
+      .build();
+
+    connectionRef.current = connection;
+
+    connection.on('DeviceStatusChanged', (payload: {
+      deviceId: number;
+      status: string;
+      lastSync?: string;
+      eventType: string;
+      message: string;
+      occurredAt: string;
+    }) => {
+      setDevices((prev) =>
+        prev.map((d) =>
+          d.id === payload.deviceId
+            ? {
+                ...d,
+                status: payload.status,
+                lastSync: payload.lastSync ? new Date(payload.lastSync) : d.lastSync,
+                lastEventType: payload.eventType,
+                lastEventMessage: payload.message,
+              }
+            : d
+        )
+      );
+    });
+
+    connection.start().catch((err) =>
+      console.warn('SignalR connection failed:', err)
+    );
+
+    return () => {
+      connection.stop();
+    };
   }, []);
 
   const totalRows = devices.length;

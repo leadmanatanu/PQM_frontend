@@ -23,6 +23,11 @@ export const addDevice = async (device: Device): Promise<any | undefined> => {
             SerialNumber: device.serialNumber,
             ConsumerNumber: device.consumerNumber,
             ftpFolder: device.ftpFolder,
+            ClientAddress: device.clientAddress ?? 16,
+            ServerAddress: device.serverAddress ?? 1,
+            Authentication: device.authentication ?? "None",
+            Password: device.password,
+            Timeout: device.timeout ?? 30000,
         };
         const { data } = await apiClient.post<ApiResponse>('/device', payload);
         return data;
@@ -44,6 +49,11 @@ export const editDevice = async (device: Device): Promise<any | undefined> => {
             SerialNumber: device.serialNumber,
             ConsumerNumber: device.consumerNumber,
             ftpFolder: device.ftpFolder,
+            ClientAddress: device.clientAddress ?? 16,
+            ServerAddress: device.serverAddress ?? 1,
+            Authentication: device.authentication ?? "None",
+            Password: device.password,
+            Timeout: device.timeout ?? 30000,
         };
         const { data } = await apiClient.put<ApiResponse>('/device', payload);
         return data;

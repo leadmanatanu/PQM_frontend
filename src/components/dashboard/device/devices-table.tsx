@@ -40,6 +40,16 @@ export interface Device {
     consumerNumber: string;
     ftpFolder: string;
     lastSync?: Date;
+    clientAddress?: number;
+    serverAddress?: number;
+    authentication?: string;
+    password?: string;
+    timeout?: number;
+    status?: string;
+    lastConnectionAttempt?: Date;
+    lastError?: string;
+    lastEventType?: string;
+    lastEventMessage?: string;
 }
 
 interface DevicesTableProps {
@@ -123,17 +133,31 @@ export function DevicesTable({
                             <TableCell sx={{ fontWeight: 600 }}>Serial No</TableCell>
                             <TableCell sx={{ fontWeight: 600 }}>Consumer No</TableCell>
                             <TableCell sx={{ fontWeight: 600 }}>FTP Folder</TableCell>
-                            <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
+                            <TableCell sx={{ fontWeight: 600 }}>Active</TableCell>
+                            <TableCell sx={{ fontWeight: 600 }}>Connection</TableCell>
                             <TableCell sx={{ fontWeight: 600 }}>IP</TableCell>
                             <TableCell sx={{ fontWeight: 600 }}>PORT</TableCell>
-                            <TableCell sx={{ fontWeight: 600 }}>Created Date</TableCell>
                             <TableCell sx={{ fontWeight: 600 }}>Last Sync</TableCell>
+                            <TableCell sx={{ fontWeight: 600 }}>Last Event</TableCell>
                             <TableCell sx={{ fontWeight: 600 }} align="center">Action</TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
                         {rows.map((row) => {
                             const isSelected = selected?.has(row.id);
+                            const connectionStatus = row.status ?? 'Offline';
+
+                            const statusColor = (() => {
+                                switch (connectionStatus) {
+                                    case 'Online':    return 'success';
+                                    case 'Connecting': return 'warning';
+                                    case 'Error':     return 'error';
+                                    case 'Disabled':  return 'default';
+                                    default:          return 'default'; // Offline
+                                }
+                            })() as 'success' | 'warning' | 'error' | 'default';
+
+                            const statusVariant = connectionStatus === 'Online' ? 'filled' : 'outlined';
 
                             return (
                                 <TableRow hover key={row.id} selected={isSelected}>
@@ -150,10 +174,44 @@ export function DevicesTable({
                                             variant="outlined"
                                         />
                                     </TableCell>
+                                    <TableCell>
+                                        <Chip
+                                            label={connectionStatus}
+                                            color={statusColor}
+                                            size="small"
+                                            variant={statusVariant}
+                                            sx={{ fontWeight: 600, minWidth: 80, textAlign: 'center' }}
+                                        />
+                                    </TableCell>
                                     <TableCell sx={{ whiteSpace: 'nowrap' }}>{row.ip}</TableCell>
                                     <TableCell>{row.port}</TableCell>
-                                    <TableCell sx={{ whiteSpace: 'nowrap' }}>{dayjs(row.createdDate).format('MMM D, YYYY')}</TableCell>
-                                    <TableCell sx={{ whiteSpace: 'nowrap' }}>{row.lastSync ? dayjs(row.lastSync).format('MMM D, YYYY') : ''}</TableCell>
+                                    <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                                        {row.lastSync
+                                            ? dayjs(row.lastSync).format('MMM D, YYYY HH:mm')
+                                            : <Typography variant="caption" color="text.disabled">Never</Typography>}
+                                    </TableCell>
+                                    <TableCell sx={{ whiteSpace: 'nowrap', maxWidth: 200 }}>
+                                        {row.lastEventType ? (
+                                            <Stack spacing={0}>
+                                                <Typography variant="caption" fontWeight={600} color="text.primary">
+                                                    {row.lastEventType}
+                                                </Typography>
+                                                {row.lastEventMessage && (
+                                                    <Typography variant="caption" color="text.secondary" sx={{
+                                                        overflow: 'hidden',
+                                                        textOverflow: 'ellipsis',
+                                                        whiteSpace: 'nowrap',
+                                                        maxWidth: 180,
+                                                        display: 'block'
+                                                    }}>
+                                                        {row.lastEventMessage}
+                                                    </Typography>
+                                                )}
+                                            </Stack>
+                                        ) : (
+                                            <Typography variant="caption" color="text.disabled">—</Typography>
+                                        )}
+                                    </TableCell>
                                     <TableCell align="center" sx={{ whiteSpace: 'nowrap' }}>
                                         <Button
                                             variant="outlined"
@@ -171,13 +229,6 @@ export function DevicesTable({
                                         >
                                             Delete
                                         </Button>
-                                        {/*<Button
-                                            variant="outlined"
-                                            size="small"
-                                            onClick={() => handleSyncClick(row.id)}
-                                        >
-                                            Sync
-                                        </Button> */}
                                     </TableCell>
                                 </TableRow>
                             );
@@ -185,6 +236,7 @@ export function DevicesTable({
                     </TableBody>
                 </Table>
             </Box>
+
             <Divider />
             <TablePagination
                 component="div"
