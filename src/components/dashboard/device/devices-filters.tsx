@@ -6,14 +6,16 @@ import { MagnifyingGlassIcon } from '@phosphor-icons/react/dist/ssr/MagnifyingGl
 
 interface DevicesFiltersProps {
     show?: boolean;
+    value?: string;
+    onChange?: (event: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
-export function DevicesFilters({ show = true }: DevicesFiltersProps): React.JSX.Element | null{
-    //console.log("isVisible " + isVisible);
+export function DevicesFilters({ show = true, value = '', onChange }: DevicesFiltersProps): React.JSX.Element | null{
     if (!show) return null;
     return (
       <OutlinedInput
-        defaultValue=""
+        value={value}
+        onChange={onChange}
         fullWidth
         size="small"
         placeholder="Search device"

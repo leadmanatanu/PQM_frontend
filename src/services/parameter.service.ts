@@ -1,9 +1,16 @@
-import { apiClient, ApiResponse } from './api-client';
+import { apiClient } from './api-client';
 
-// Fetch device parameters
-export const fetchDeviceParameter = async (id: string | number): Promise<any | null> => {
+// Fetch device parameters with optional profileId filter
+export const fetchDeviceParameter = async (
+    id?: string | number | null,
+    profileId?: string | number | null
+): Promise<any | null> => {
     try {
-        const { data } = await apiClient.get(`/Parameter/${id}`);
+        const params: Record<string, any> = {};
+        if (id && Number(id) > 0) params.deviceId = id;
+        if (profileId && Number(profileId) > 0) params.profileId = profileId;
+
+        const { data } = await apiClient.get('/Parameter', { params });
         return data;
     } catch (error) {
         console.error("Error fetching device parameter:", error);
@@ -11,13 +18,10 @@ export const fetchDeviceParameter = async (id: string | number): Promise<any | n
     }
 };
 
-// Update device parameter mapping
-export const updateDeviceParamMapping = async (deviceParams: any[]): Promise<any | undefined> => {
-    try {
-        const { data } = await apiClient.post<ApiResponse>('/deviceparammapping', deviceParams);
-        return data;
-    } catch (error) {
-        console.error('Error updating device parameter mapping:', error);
-        return undefined;
-    }
+// Fetch parameters for a device (optionally filtered by profileId)
+export const fetchParametersForDevice = async (
+    deviceId: string | number,
+    profileId?: string | number | null
+): Promise<any | null> => {
+    return fetchDeviceParameter(deviceId, profileId);
 };

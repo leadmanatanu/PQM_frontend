@@ -4,7 +4,6 @@ import * as React from "react";
 import { useState, useEffect } from "react";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
-import CircularProgress from "@mui/material/CircularProgress";
 import Box from "@mui/material/Box";
 
 import { EventRTable } from "@/components/dashboard/eventreadings/events-table";
@@ -38,7 +37,7 @@ export default function Page(): React.JSX.Element {
       setOverlayLoading(true);
       try {
         const fetchedDevices = await fetchDevices();
-        setDevices(fetchedDevices);
+        setDevices(fetchedDevices ?? []);
       } catch (error) {
         console.error("Failed to fetch devices:", error);
       } finally {
@@ -128,25 +127,6 @@ export default function Page(): React.JSX.Element {
 
   return (
     <div>
-      {overlayLoading && (
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: "rgba(255, 255, 255, 0.7)",
-            zIndex: 1,
-            pointerEvents: overlayLoading ? "auto" : "none", // ✅ block only when loading
-          }}
-        >
-          <CircularProgress />
-        </Box>
-      )}
       <Stack spacing={3}>
         <div>
           <Typography variant="h4">Event Readings</Typography>

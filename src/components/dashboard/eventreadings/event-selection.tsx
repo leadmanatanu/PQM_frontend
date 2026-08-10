@@ -17,11 +17,10 @@ import { DemoContainer } from "@mui/x-date-pickers/internals/demo";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
-import type { Device } from "@/components/dashboard/device/devices-table";
-import { fetchConnectedHeaders, fetchDLMSObjects } from "../../../api/device";
+import type { Device } from "../../../components/dashboard/device/devices-table";
 
 interface DeviceFiltersProps {
-    rows: Device[];
+    rows?: Device[];
     onSearch?: (searchParams: {
         deviceId: string | number | null;
         startTime: Dayjs | null;
@@ -57,43 +56,7 @@ export function EventFilters({
             setSelectedEvent(null);
             return;
         }
-
-        const loadDeviceEventParams = async () => {
-            try {
-                const headerRes = await fetchConnectedHeaders(selectedDevice.id);
-                if (headerRes && headerRes.status && headerRes.data.length > 0) {
-                    const allEventParams: any[] = [];
-                    for (const header of headerRes.data) {
-                        const objectsRes = await fetchDLMSObjects(header.id);
-                        if (objectsRes && objectsRes.status && Array.isArray(objectsRes.data)) {
-                            const eventParams = objectsRes.data.filter((obj: any) => 
-                                obj.name && obj.name.toLowerCase().includes("event")
-                            );
-                            allEventParams.push(...eventParams);
-                        }
-                    }
-
-                    // Map status parameters to dropdown options
-                    const statusOptions = allEventParams.map((obj: any) => ({
-                        key: `status_${obj.obisCode}`,
-                        value: obj.name,
-                        isStatusParam: true,
-                        obisCode: obj.obisCode,
-                        objectType: obj.objectType,
-                        dlmsObject: obj,
-                    }));
-
-                    setEventTypes(statusOptions);
-                } else {
-                    setEventTypes([]);
-                }
-            } catch (error) {
-                console.error("Failed to load device event parameters:", error);
-                setEventTypes([]);
-            }
-        };
-
-        loadDeviceEventParams();
+        setEventTypes([]);
         setSelectedEvent(null);
     }, [selectedDevice]);
 

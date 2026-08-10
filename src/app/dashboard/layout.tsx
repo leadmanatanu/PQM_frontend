@@ -5,6 +5,7 @@ import GlobalStyles from '@mui/material/GlobalStyles';
 import { Outlet } from 'react-router-dom';
 
 import { AuthGuard } from '@/components/auth/auth-guard';
+import { MainNav } from '@/components/dashboard/layout/main-nav';
 import { SideNav } from '@/components/dashboard/layout/side-nav';
 
 export default function Layout(): React.JSX.Element {
@@ -13,11 +14,11 @@ export default function Layout(): React.JSX.Element {
       <GlobalStyles
         styles={{
           body: {
-            '--MainNav-height': '56px',
+            '--MainNav-height': '52px',
             '--MainNav-zIndex': 1000,
-            '--SideNav-width': '280px',
+            '--SideNav-width': '240px',
             '--SideNav-zIndex': 1100,
-            '--MobileNav-width': '320px',
+            '--MobileNav-width': '270px',
             '--MobileNav-zIndex': 1100,
           },
         }}
@@ -33,8 +34,9 @@ export default function Layout(): React.JSX.Element {
       >
         <SideNav /> 
         <Box sx={{ display: 'flex', flex: '1 1 auto', flexDirection: 'column', pl: { lg: 'var(--SideNav-width)' } }}>
+          <MainNav />
           <main>
-            <Container maxWidth="xl" sx={{ py: '20px' }}>
+            <Container maxWidth="xl" sx={{ py: '16px', px: { xs: 1.5, sm: 2, md: 3 } }}>
               <Outlet />
             </Container>
           </main>

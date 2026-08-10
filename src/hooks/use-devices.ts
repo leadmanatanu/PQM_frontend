@@ -1,6 +1,6 @@
 import * as React from 'react';
-import type { Device } from '@/components/dashboard/device/devices-table';
-import * as deviceService from '@/services/device.service';
+import type { Device } from '../components/dashboard/device/devices-table';
+import * as deviceService from '../services/device.service';
 
 export function useDevices() {
   const [devices, setDevices] = React.useState<Device[]>([]);
@@ -48,20 +48,6 @@ export function useDevices() {
     }
   };
 
-  const deleteDevice = async (device: Device) => {
-    setLoading(true);
-    try {
-      const result = await deviceService.deleteDevice(device);
-      await fetchDevices();
-      return result;
-    } catch (err: any) {
-      setError(err.message || 'Failed to delete device');
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  };
-
   React.useEffect(() => {
     fetchDevices();
   }, [fetchDevices]);
@@ -73,6 +59,5 @@ export function useDevices() {
     reload: fetchDevices,
     addDevice,
     editDevice,
-    deleteDevice,
   };
 }

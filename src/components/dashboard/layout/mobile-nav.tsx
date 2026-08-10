@@ -64,7 +64,7 @@ export function MobileNav({ open, onClose }: MobileNavProps): React.JSX.Element 
           '--MobileNav-background': 'var(--mui-palette-neutral-950)',
           '--MobileNav-color': 'var(--mui-palette-common-white)',
           '--NavItem-color': 'var(--mui-palette-neutral-300)',
-          '--NavItem-hover-background': 'rgba(255, 255, 255, 0.04)',
+          '--NavItem-hover-background': 'rgba(255, 255, 255, 0.06)',
           '--NavItem-active-background': 'var(--mui-palette-primary-main)',
           '--NavItem-active-color': 'var(--mui-palette-primary-contrastText)',
           '--NavItem-disabled-color': 'var(--mui-palette-neutral-500)',
@@ -84,108 +84,28 @@ export function MobileNav({ open, onClose }: MobileNavProps): React.JSX.Element 
       }}
       onClose={onClose}
       open={open}
+      ModalProps={{
+        keepMounted: true,
+      }}
     >
-      <Stack spacing={2} sx={{ p: 3 }}>
-        <Box component={RouterLink} href={paths.home} sx={{ display: 'inline-flex' }}>
-          <Logo color="light" height={32} width={122} />
+      <Stack spacing={1.5} sx={{ p: 2.5, pb: 2 }}>
+        <Box component={RouterLink} href={paths.home} onClick={onClose} sx={{ display: 'inline-flex' }}>
+          <Logo color="light" height={28} width={108} />
         </Box>
       </Stack>
-      <Divider sx={{ borderColor: 'var(--mui-palette-neutral-700)' }} />
-      <Box component="nav" sx={{ flex: '1 1 auto', p: '12px' }}>
-        {renderNavItems({ pathname, items: navItems })}
-      </Box>
-      <Divider sx={{ borderColor: 'var(--mui-palette-neutral-700)' }} />
-      <Box sx={{ p: '16px 20px', display: 'flex', flexDirection: 'column', gap: 2 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Avatar src={avatarSrc} />
-          <Box sx={{ flex: '1 1 auto' }}>
-            <Typography color="inherit" variant="subtitle2" sx={{ fontSize: '0.875rem', fontWeight: 600 }}>
-              {displayName}
-            </Typography>
-            <Typography color="var(--mui-palette-neutral-400)" variant="body2" sx={{ fontSize: '0.75rem' }}>
-              {emailAddress}
-            </Typography>
-          </Box>
-        </Box>
-        <Stack spacing={0.5}>
-          <Button 
-            component={RouterLink} 
-            href={paths.dashboard.settings}
-            variant="text" 
-            size="small" 
-            onClick={onClose}
-            startIcon={<GearSixIcon fontSize="18" />}
-            sx={{ 
-              color: 'var(--NavItem-color)', 
-              justifyContent: 'flex-start', 
-              p: '4px 8px', 
-              borderRadius: '4px',
-              textTransform: 'none',
-              fontSize: '0.8125rem',
-              '&:hover': { 
-                bgcolor: 'rgba(255, 255, 255, 0.04)',
-                color: 'white' 
-              } 
-            }}
-          >
-            Settings
-          </Button>
-          <Button 
-            component={RouterLink} 
-            href={paths.dashboard.account}
-            variant="text" 
-            size="small" 
-            onClick={onClose}
-            startIcon={<UserIcon fontSize="18" />}
-            sx={{ 
-              color: 'var(--NavItem-color)', 
-              justifyContent: 'flex-start', 
-              p: '4px 8px', 
-              borderRadius: '4px',
-              textTransform: 'none',
-              fontSize: '0.8125rem',
-              '&:hover': { 
-                bgcolor: 'rgba(255, 255, 255, 0.04)',
-                color: 'white' 
-              } 
-            }}
-          >
-            Profile
-          </Button>
-          <Button 
-            onClick={() => {
-              onClose?.();
-              handleSignOut();
-            }}
-            variant="text" 
-            size="small" 
-            startIcon={<SignOutIcon fontSize="18" />}
-            sx={{ 
-              color: 'var(--NavItem-color)', 
-              justifyContent: 'flex-start', 
-              p: '4px 8px', 
-              borderRadius: '4px',
-              textTransform: 'none',
-              fontSize: '0.8125rem',
-              '&:hover': { 
-                bgcolor: 'rgba(255, 255, 255, 0.04)',
-                color: 'white' 
-              } 
-            }}
-          >
-            Sign out
-          </Button>
-        </Stack>
+      <Divider sx={{ borderColor: 'var(--mui-palette-neutral-800)' }} />
+      <Box component="nav" sx={{ flex: '1 1 auto', px: 1.5, py: 2 }}>
+        {renderNavItems({ pathname, items: navItems, onClose })}
       </Box>
     </Drawer>
   );
 }
 
-function renderNavItems({ items = [], pathname }: { items?: NavItemConfig[]; pathname: string }): React.JSX.Element {
+function renderNavItems({ items = [], pathname, onClose }: { items?: NavItemConfig[]; pathname: string; onClose?: () => void }): React.JSX.Element {
   const children = items.reduce((acc: React.ReactNode[], curr: NavItemConfig): React.ReactNode[] => {
     const { key, ...item } = curr;
 
-    acc.push(<NavItem key={key} pathname={pathname} {...item} />);
+    acc.push(<NavItem key={key} pathname={pathname} onClose={onClose} {...item} />);
 
     return acc;
   }, []);
@@ -199,9 +119,10 @@ function renderNavItems({ items = [], pathname }: { items?: NavItemConfig[]; pat
 
 interface NavItemProps extends Omit<NavItemConfig, 'items'> {
   pathname: string;
+  onClose?: () => void;
 }
 
-function NavItem({ disabled, external, href, icon, matcher, pathname, title }: NavItemProps): React.JSX.Element {
+function NavItem({ disabled, external, href, icon, matcher, pathname, title, onClose }: NavItemProps): React.JSX.Element {
   const active = isNavItemActive({ disabled, external, href, matcher, pathname });
   const Icon = icon ? navIcons[icon] : null;
 
@@ -214,33 +135,46 @@ function NavItem({ disabled, external, href, icon, matcher, pathname, title }: N
               href,
               target: external ? '_blank' : undefined,
               rel: external ? 'noreferrer' : undefined,
+              onClick: onClose,
             }
-          : { role: 'button' })}
+          : { role: 'button', onClick: onClose })}
         sx={{
           alignItems: 'center',
-          borderRadius: 1,
+          borderRadius: '8px',
           color: 'var(--NavItem-color)',
           cursor: 'pointer',
           display: 'flex',
           flex: '0 0 auto',
-          gap: 1,
-          p: '6px 16px',
+          gap: 1.5,
+          p: '8px 14px',
           position: 'relative',
           textDecoration: 'none',
           whiteSpace: 'nowrap',
+          transition: 'background-color 0.2s ease-in-out, color 0.2s ease-in-out',
+          '&:hover': {
+            bgcolor: 'var(--NavItem-hover-background)',
+            color: 'var(--mui-palette-common-white)',
+          },
           ...(disabled && {
             bgcolor: 'var(--NavItem-disabled-background)',
             color: 'var(--NavItem-disabled-color)',
             cursor: 'not-allowed',
           }),
-          ...(active && { bgcolor: 'var(--NavItem-active-background)', color: 'var(--NavItem-active-color)' }),
+          ...(active && {
+            bgcolor: 'var(--NavItem-active-background)',
+            color: 'var(--NavItem-active-color)',
+            fontWeight: 600,
+            '&:hover': {
+              bgcolor: 'var(--NavItem-active-background)',
+            },
+          }),
         }}
       >
-        <Box sx={{ alignItems: 'center', display: 'flex', justifyContent: 'center', flex: '0 0 auto' }}>
+        <Box sx={{ alignItems: 'center', display: 'flex', justifyContent: 'center', flex: '0 0 auto', width: 20, height: 20 }}>
           {Icon ? (
             <Icon
               fill={active ? 'var(--NavItem-icon-active-color)' : 'var(--NavItem-icon-color)'}
-              fontSize="var(--icon-fontSize-md)"
+              fontSize="20px"
               weight={active ? 'fill' : undefined}
             />
           ) : null}
@@ -248,7 +182,7 @@ function NavItem({ disabled, external, href, icon, matcher, pathname, title }: N
         <Box sx={{ flex: '1 1 auto' }}>
           <Typography
             component="span"
-            sx={{ color: 'inherit', fontSize: '0.875rem', fontWeight: 500, lineHeight: '28px' }}
+            sx={{ color: 'inherit', fontSize: '0.875rem', fontWeight: active ? 600 : 500, lineHeight: '24px' }}
           >
             {title}
           </Typography>

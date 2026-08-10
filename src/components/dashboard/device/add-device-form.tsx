@@ -2,20 +2,21 @@
 
 import * as React from 'react';
 import Button from '@mui/material/Button';
-import Card from '@mui/material/Card';
-import CardActions from '@mui/material/CardActions';
-import CardContent from '@mui/material/CardContent';
-import CardHeader from '@mui/material/CardHeader';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
 import Divider from '@mui/material/Divider';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import OutlinedInput from '@mui/material/OutlinedInput';
 import FormHelperText from '@mui/material/FormHelperText';
-import Stack from '@mui/material/Stack';
+import Grid from '@mui/material/Grid';
+import Typography from '@mui/material/Typography';
 import { Select, MenuItem } from '@mui/material';
 import { SelectChangeEvent } from '@mui/material/Select';
 import { addDevice, editDevice } from '../../../api/device';
-import type { Device } from '@/components/dashboard/device/devices-table';
+import type { Device } from '../../../components/dashboard/device/devices-table';
 
 interface AddDeviceFormProps {
     show?: boolean;
@@ -36,24 +37,26 @@ export function AddDeviceForm({
     const [txtPort, setTxtPort] = React.useState('');
     const [txtConsumerNo, setTxtConsumerNo] = React.useState('');
     const [txtSerialNo, setTxtSerialNo] = React.useState('');
-    const [txtFtpFolder, setTxtFtpFolder] = React.useState('');
     const [txtClientAddress, setTxtClientAddress] = React.useState('16');
     const [txtServerAddress, setTxtServerAddress] = React.useState('1');
     const [txtAuthentication, setTxtAuthentication] = React.useState('None');
     const [txtPassword, setTxtPassword] = React.useState('');
     const [txtTimeout, setTxtTimeout] = React.useState('30000');
+    const [txtTypeName, setTxtTypeName] = React.useState<'ABT' | 'PQ' | 'Both'>('ABT');
+    const [txtTimeZoneId, setTxtTimeZoneId] = React.useState('India Standard Time');
 
     const [errors, setErrors] = React.useState({
         name: '',
         serialNo: '',
         consumerNo: '',
-        ftpFolder: '',
         ip: '',
         port: '',
         clientAddress: '',
         serverAddress: '',
         timeout: '',
+        password: '',
         general: '',
+        meterTypeName: '',
     });
 
     React.useEffect(() => {
@@ -63,42 +66,54 @@ export function AddDeviceForm({
             setTxtPort(String(editingDevice.port ?? ''));
             setTxtConsumerNo(editingDevice.consumerNumber || '');
             setTxtSerialNo(editingDevice.serialNumber || '');
-            setTxtFtpFolder(editingDevice.ftpFolder || '');
             setSelectedValue(editingDevice.isActive ? '1' : '0'); // normalize
             setTxtClientAddress(String(editingDevice.clientAddress ?? 16));
             setTxtServerAddress(String(editingDevice.serverAddress ?? 1));
             setTxtAuthentication(editingDevice.authentication || 'None');
             setTxtPassword(editingDevice.password || '');
             setTxtTimeout(String(editingDevice.timeout ?? 30000));
+            const METER_TYPE_OPTIONS: { id: number; name: 'ABT' | 'PQ' | 'Both' }[] = [
+                { id: 1, name: 'ABT' },
+                { id: 2, name: 'PQ' },
+                { id: 3, name: 'Both' },
+            ];
+            let typeVal = editingDevice.meterTypeName || editingDevice.meterType;
+            if (!typeVal && editingDevice.meterTypeId !== undefined && editingDevice.meterTypeId !== null) {
+                const idNum = Number(editingDevice.meterTypeId);
+                const matchedOption = METER_TYPE_OPTIONS.find(o => o.id === idNum);
+                typeVal = matchedOption ? matchedOption.name : '';
+            }
+            setTxtTypeName((typeVal as 'ABT' | 'PQ' | 'Both') || 'ABT');
+            setTxtTimeZoneId(editingDevice.timeZoneId || 'India Standard Time');
         } else {
             setTxtName('');
             setTxtIP('');
             setTxtPort('');
             setTxtConsumerNo('');
             setTxtSerialNo('');
-            setTxtFtpFolder('');
             setSelectedValue('1');
             setTxtClientAddress('16');
             setTxtServerAddress('1');
             setTxtAuthentication('None');
             setTxtPassword('');
             setTxtTimeout('30000');
+            setTxtTypeName('ABT');
+            setTxtTimeZoneId('India Standard Time');
             setErrors({
                 name: '',
                 serialNo: '',
                 consumerNo: '',
-                ftpFolder: '',
                 ip: '',
                 port: '',
                 clientAddress: '',
                 serverAddress: '',
                 timeout: '',
+                password: '',
                 general: '',
+                meterTypeName: '',
             });
         }
     }, [editingDevice]);
-
-    if (!show) return null;
 
     // ---- Handlers ----
     const handleChange = (event: SelectChangeEvent<string>) => {
@@ -131,11 +146,6 @@ export function AddDeviceForm({
         setErrors((prev) => ({ ...prev, serialNo: '', general: '' }));
     };
 
-    const handleFtpChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-        setTxtFtpFolder(event.target.value);
-        setErrors((prev) => ({ ...prev, ftpFolder: '', general: '' }));
-    };
-
     const handleClientAddressChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         setTxtClientAddress(event.target.value);
         setErrors((prev) => ({ ...prev, clientAddress: '', general: '' }));
@@ -147,7 +157,13 @@ export function AddDeviceForm({
     };
 
     const handleAuthenticationChange = (event: SelectChangeEvent<string>) => {
-        setTxtAuthentication(event.target.value);
+        const newAuth = event.target.value;
+        setTxtAuthentication(newAuth);
+        if (newAuth !== 'None' && (txtClientAddress === '16' || !txtClientAddress)) {
+            setTxtClientAddress('32');
+        } else if (newAuth === 'None' && txtClientAddress === '32') {
+            setTxtClientAddress('16');
+        }
         setErrors((prev) => ({ ...prev, general: '' }));
     };
 
@@ -167,13 +183,14 @@ export function AddDeviceForm({
             name: '',
             serialNo: '',
             consumerNo: '',
-            ftpFolder: '',
             ip: '',
             port: '',
             clientAddress: '',
             serverAddress: '',
             timeout: '',
+            password: '',
             general: '',
+            meterTypeName: '',
         };
         let isValid = true;
 
@@ -189,11 +206,6 @@ export function AddDeviceForm({
 
         if (!txtConsumerNo.trim()) {
             newErrors.consumerNo = 'Consumer number is required';
-            isValid = false;
-        }
-
-        if (!txtFtpFolder.trim()) {
-            newErrors.ftpFolder = 'FTP folder is required';
             isValid = false;
         }
 
@@ -243,6 +255,11 @@ export function AddDeviceForm({
             isValid = false;
         }
 
+        if (txtAuthentication !== 'None' && !txtPassword.trim()) {
+            newErrors.password = 'Password is required when Authentication is enabled';
+            isValid = false;
+        }
+
         setErrors(newErrors);
         return isValid;
     };
@@ -260,12 +277,13 @@ export function AddDeviceForm({
             port: Number(txtPort),
             consumerNumber: txtConsumerNo,
             serialNumber: txtSerialNo,
-            ftpFolder: txtFtpFolder,
             clientAddress: Number(txtClientAddress),
             serverAddress: Number(txtServerAddress),
             authentication: txtAuthentication,
             password: txtPassword,
             timeout: Number(txtTimeout),
+            meterTypeName: txtTypeName,
+            timeZoneId: txtTimeZoneId || 'India Standard Time',
         };
 
         try {
@@ -290,23 +308,25 @@ export function AddDeviceForm({
             setTxtPort('');
             setTxtConsumerNo('');
             setTxtSerialNo('');
-            setTxtFtpFolder('');
             setTxtClientAddress('16');
             setTxtServerAddress('1');
             setTxtAuthentication('None');
             setTxtPassword('');
             setTxtTimeout('30000');
+            setTxtTypeName('ABT');
+            setTxtTimeZoneId('India Standard Time');
             setErrors({
                 name: '',
                 serialNo: '',
                 consumerNo: '',
-                ftpFolder: '',
                 ip: '',
                 port: '',
                 clientAddress: '',
                 serverAddress: '',
                 timeout: '',
+                password: '',
                 general: '',
+                meterTypeName: '',
             });
             setEditingDevice(null);
             onToggleVisibility(null);
@@ -323,23 +343,24 @@ export function AddDeviceForm({
         setTxtPort('');
         setTxtConsumerNo('');
         setTxtSerialNo('');
-        setTxtFtpFolder('');
         setTxtClientAddress('16');
         setTxtServerAddress('1');
         setTxtAuthentication('None');
         setTxtPassword('');
         setTxtTimeout('30000');
+        setTxtTimeZoneId('India Standard Time');
         setErrors({
             name: '',
             serialNo: '',
             consumerNo: '',
-            ftpFolder: '',
             ip: '',
             port: '',
             clientAddress: '',
             serverAddress: '',
             timeout: '',
+            password: '',
             general: '',
+            meterTypeName: '',
         });
         setEditingDevice(null);
         onToggleVisibility(null);
@@ -351,101 +372,173 @@ export function AddDeviceForm({
                 event.preventDefault();
             }}
         >
-            <Card>
-                <CardHeader title={editingDevice ? 'Edit Device' : 'Add Device'} />
+            <Dialog
+                open={show}
+                onClose={() => onToggleVisibility(null)}
+                fullWidth
+                maxWidth="md"
+                PaperProps={{
+                    sx: {
+                        borderRadius: 3,
+                        maxHeight: "90vh",
+                    },
+                }}
+            >
+                <DialogTitle sx={{ py: 1.25, px: 3, fontSize: '1.05rem', fontWeight: 600 }}>
+                    {editingDevice ? 'Edit Device' : 'Add Device'}
+                </DialogTitle>
                 <Divider />
-                <CardContent>
-                    <Stack spacing={3} sx={{ maxWidth: 'sm' }}>
-                        <FormControl fullWidth error={!!errors.name}>
-                            <InputLabel>Device</InputLabel>
-                            <OutlinedInput
-                                label="Device"
-                                name="device"
-                                type="text"
-                                value={txtName}
-                                onChange={handleNameChange}
-                            />
-                            {errors.name && <FormHelperText>{errors.name}</FormHelperText>}
-                        </FormControl>
+                <DialogContent
+                    dividers
+                    sx={{
+                        py: 1.5,
+                        px: 3,
+                        overflowY: "auto",
+                    }}
+                >
+                    <Grid container spacing={1.5}>
+                        {/* Section 1 - Device Information */}
+                        <Grid size={12}>
+                            <Typography variant="subtitle2" sx={{ fontWeight: 600, color: 'text.primary', mb: 0.25 }}>
+                                Device Information
+                            </Typography>
+                        </Grid>
 
-                        <FormControl fullWidth error={!!errors.serialNo}>
-                            <InputLabel>Serial No</InputLabel>
-                            <OutlinedInput
-                                label="Serial No"
-                                name="serialNo"
-                                type="text"
-                                value={txtSerialNo}
-                                onChange={handleSerChange}
-                            />
-                            {errors.serialNo && <FormHelperText>{errors.serialNo}</FormHelperText>}
-                        </FormControl>
+                        <Grid size={{ xs: 12, md: 6 }}>
+                            <FormControl fullWidth size="small" error={!!errors.name}>
+                                <InputLabel>Device Name</InputLabel>
+                                <OutlinedInput
+                                    label="Device Name"
+                                    value={txtName}
+                                    onChange={handleNameChange}
+                                />
+                                {errors.name && (
+                                    <FormHelperText>{errors.name}</FormHelperText>
+                                )}
+                            </FormControl>
+                        </Grid>
 
-                        <FormControl fullWidth error={!!errors.consumerNo}>
-                            <InputLabel>Consumer No</InputLabel>
-                            <OutlinedInput
-                                label="Consumer No"
-                                name="consumerNo"
-                                type="text"
-                                value={txtConsumerNo}
-                                onChange={handleConChange}
-                            />
-                            {errors.consumerNo && <FormHelperText>{errors.consumerNo}</FormHelperText>}
-                        </FormControl>
+                        <Grid size={{ xs: 12, md: 6 }}>
+                            <FormControl fullWidth size="small" error={!!errors.serialNo}>
+                                <InputLabel>Serial Number</InputLabel>
+                                <OutlinedInput
+                                    label="Serial Number"
+                                    value={txtSerialNo}
+                                    onChange={handleSerChange}
+                                />
+                                {errors.serialNo && (
+                                    <FormHelperText>{errors.serialNo}</FormHelperText>
+                                )}
+                            </FormControl>
+                        </Grid>
 
-                        <FormControl fullWidth error={!!errors.ftpFolder}>
-                            <InputLabel>FTP Folder</InputLabel>
-                            <OutlinedInput
-                                label="FTP Folder"
-                                name="ftpFolder"
-                                type="text"
-                                value={txtFtpFolder}
-                                onChange={handleFtpChange}
-                            />
-                            {errors.ftpFolder && <FormHelperText>{errors.ftpFolder}</FormHelperText>}
-                        </FormControl>
+                        <Grid size={{ xs: 12, md: 6 }}>
+                            <FormControl fullWidth size="small" error={!!errors.consumerNo}>
+                                <InputLabel>Consumer Number</InputLabel>
+                                <OutlinedInput
+                                    label="Consumer Number"
+                                    name="consumerNo"
+                                    type="text"
+                                    value={txtConsumerNo}
+                                    onChange={handleConChange}
+                                />
+                                {errors.consumerNo && (
+                                    <FormHelperText>{errors.consumerNo}</FormHelperText>
+                                )}
+                            </FormControl>
+                        </Grid>
 
-                        <FormControl fullWidth>
-                            <InputLabel id="isactive-label">Select Option</InputLabel>
-                            <Select
-                                labelId="isactive-label"
-                                id="isactive"
-                                name="isactive"
-                                value={selectedValue}
-                                label="Select Option"
-                                onChange={handleChange}
-                            >
-                                <MenuItem value="1">Active</MenuItem>
-                                <MenuItem value="0">Inactive</MenuItem>
-                            </Select>
-                        </FormControl>
+                        <Grid size={{ xs: 12, md: 6 }}>
+                            <FormControl fullWidth size="small">
+                                <InputLabel id="isactive-label">Status</InputLabel>
+                                <Select
+                                    labelId="isactive-label"
+                                    id="isactive"
+                                    name="isactive"
+                                    value={selectedValue}
+                                    label="Status"
+                                    onChange={handleChange}
+                                >
+                                    <MenuItem value="1">Active</MenuItem>
+                                    <MenuItem value="0">Inactive</MenuItem>
+                                </Select>
+                            </FormControl>
+                        </Grid>
 
-                        <FormControl fullWidth error={!!errors.ip}>
-                            <InputLabel>IP</InputLabel>
-                            <OutlinedInput
-                                label="IP"
-                                name="ip"
-                                type="text"
-                                value={txtIP}
-                                onChange={handleIPChange}
-                            />
-                            {errors.ip && <FormHelperText>{errors.ip}</FormHelperText>}
-                        </FormControl>
+                        <Grid size={{ xs: 12, md: 6 }}>
+                            <FormControl fullWidth size="small">
+                                <InputLabel id="metertype-label">Meter Type</InputLabel>
+                                <Select
+                                    labelId="metertype-label"
+                                    id="metertype"
+                                    name="metertype"
+                                    value={txtTypeName}
+                                    label="Meter Type"
+                                    onChange={(e) => setTxtTypeName(e.target.value as 'ABT' | 'PQ' | 'Both')}
+                                >
+                                    <MenuItem value="ABT">ABT</MenuItem>
+                                    <MenuItem value="PQ">PQ</MenuItem>
+                                    <MenuItem value="Both">Both</MenuItem>
+                                </Select>
+                            </FormControl>
+                        </Grid>
 
-                        <FormControl fullWidth error={!!errors.port}>
-                            <InputLabel>Port</InputLabel>
-                            <OutlinedInput
-                                label="Port"
-                                name="port"
-                                type="text"
-                                value={txtPort}
-                                onChange={handlePortChange}
-                            />
-                            {errors.port && <FormHelperText>{errors.port}</FormHelperText>}
-                        </FormControl>
+                        <Grid size={{ xs: 12, md: 6 }}>
+                            <FormControl fullWidth size="small">
+                                <InputLabel id="timezone-label">Time Zone</InputLabel>
+                                <Select
+                                    labelId="timezone-label"
+                                    id="timezone"
+                                    name="timezone"
+                                    value={txtTimeZoneId}
+                                    label="Time Zone"
+                                    onChange={(e) => setTxtTimeZoneId(e.target.value)}
+                                >
+                                    <MenuItem value="India Standard Time">India Standard Time (IST)</MenuItem>
+                                    <MenuItem value="UTC">Coordinated Universal Time (UTC)</MenuItem>
+                                    <MenuItem value="EST Standard Time">Eastern Standard Time (EST)</MenuItem>
+                                    <MenuItem value="SE Asia Standard Time">SE Asia Standard Time (ICT)</MenuItem>
+                                </Select>
+                            </FormControl>
+                        </Grid>
 
-                        {/* ---- DLMS Connection Configuration ---- */}
-                        <Stack direction="row" spacing={2}>
-                            <FormControl fullWidth error={!!errors.clientAddress}>
+                        {/* Section 2 - Connection Settings */}
+                        <Grid size={12}>
+                            <Typography variant="subtitle2" sx={{ fontWeight: 600, color: 'text.primary', mt: 0.5, mb: 0.25 }}>
+                                Connection Settings
+                            </Typography>
+                        </Grid>
+
+                        <Grid size={{ xs: 12, md: 6 }}>
+                            <FormControl fullWidth size="small" error={!!errors.ip}>
+                                <InputLabel>IP Address</InputLabel>
+                                <OutlinedInput
+                                    label="IP Address"
+                                    name="ip"
+                                    type="text"
+                                    value={txtIP}
+                                    onChange={handleIPChange}
+                                />
+                                {errors.ip && <FormHelperText>{errors.ip}</FormHelperText>}
+                            </FormControl>
+                        </Grid>
+
+                        <Grid size={{ xs: 12, md: 6 }}>
+                            <FormControl fullWidth size="small" error={!!errors.port}>
+                                <InputLabel>Port</InputLabel>
+                                <OutlinedInput
+                                    label="Port"
+                                    name="port"
+                                    type="text"
+                                    value={txtPort}
+                                    onChange={handlePortChange}
+                                />
+                                {errors.port && <FormHelperText>{errors.port}</FormHelperText>}
+                            </FormControl>
+                        </Grid>
+
+                        <Grid size={{ xs: 12, md: 6 }}>
+                            <FormControl fullWidth size="small" error={!!errors.clientAddress}>
                                 <InputLabel>Client Address</InputLabel>
                                 <OutlinedInput
                                     label="Client Address"
@@ -456,7 +549,10 @@ export function AddDeviceForm({
                                 />
                                 {errors.clientAddress && <FormHelperText>{errors.clientAddress}</FormHelperText>}
                             </FormControl>
-                            <FormControl fullWidth error={!!errors.serverAddress}>
+                        </Grid>
+
+                        <Grid size={{ xs: 12, md: 6 }}>
+                            <FormControl fullWidth size="small" error={!!errors.serverAddress}>
                                 <InputLabel>Server Address</InputLabel>
                                 <OutlinedInput
                                     label="Server Address"
@@ -467,70 +563,85 @@ export function AddDeviceForm({
                                 />
                                 {errors.serverAddress && <FormHelperText>{errors.serverAddress}</FormHelperText>}
                             </FormControl>
-                        </Stack>
+                        </Grid>
 
-                        <FormControl fullWidth>
-                            <InputLabel id="auth-label">Authentication</InputLabel>
-                            <Select
-                                labelId="auth-label"
-                                id="authentication"
-                                name="authentication"
-                                value={txtAuthentication}
-                                label="Authentication"
-                                onChange={handleAuthenticationChange}
-                            >
-                                <MenuItem value="None">None</MenuItem>
-                                <MenuItem value="Low">Low (Password)</MenuItem>
-                                <MenuItem value="High">High (HLS)</MenuItem>
-                                <MenuItem value="HighGmac">High GMAC</MenuItem>
-                                <MenuItem value="HighSha256">High SHA-256</MenuItem>
-                                <MenuItem value="HighEcdsa">High ECDSA</MenuItem>
-                            </Select>
-                        </FormControl>
+                        <Grid size={{ xs: 12, md: 6 }}>
+                            <FormControl fullWidth size="small">
+                                <InputLabel id="auth-label">Authentication</InputLabel>
+                                <Select
+                                    labelId="auth-label"
+                                    id="authentication"
+                                    name="authentication"
+                                    value={txtAuthentication}
+                                    label="Authentication"
+                                    onChange={handleAuthenticationChange}
+                                >
+                                    <MenuItem value="None">None</MenuItem>
+                                    <MenuItem value="Low">Low (Password)</MenuItem>
+                                    <MenuItem value="High">High (HLS)</MenuItem>
+                                    <MenuItem value="HighGmac">High GMAC</MenuItem>
+                                    <MenuItem value="HighSha256">High SHA-256</MenuItem>
+                                    <MenuItem value="HighEcdsa">High ECDSA</MenuItem>
+                                </Select>
+                            </FormControl>
+                        </Grid>
 
                         {txtAuthentication !== 'None' && (
-                            <FormControl fullWidth>
-                                <InputLabel>Password</InputLabel>
-                                <OutlinedInput
-                                    label="Password"
-                                    name="password"
-                                    type="password"
-                                    value={txtPassword}
-                                    onChange={handlePasswordChange}
-                                />
-                            </FormControl>
+                            <Grid size={{ xs: 12, md: 6 }}>
+                                <FormControl fullWidth size="small" error={!!errors.password}>
+                                    <InputLabel>Password</InputLabel>
+                                    <OutlinedInput
+                                        label="Password"
+                                        name="password"
+                                        type="password"
+                                        value={txtPassword}
+                                        onChange={handlePasswordChange}
+                                    />
+                                    {errors.password && <FormHelperText>{errors.password}</FormHelperText>}
+                                </FormControl>
+                            </Grid>
                         )}
 
-                        <FormControl fullWidth error={!!errors.timeout}>
-                            <InputLabel>Timeout (ms)</InputLabel>
-                            <OutlinedInput
-                                label="Timeout (ms)"
-                                name="timeout"
-                                type="number"
-                                value={txtTimeout}
-                                onChange={handleTimeoutChange}
-                            />
-                            {errors.timeout && <FormHelperText>{errors.timeout}</FormHelperText>}
-                        </FormControl>
+                        <Grid size={{ xs: 12, md: 6 }}>
+                            <FormControl fullWidth size="small" error={!!errors.timeout}>
+                                <InputLabel>Timeout (ms)</InputLabel>
+                                <OutlinedInput
+                                    label="Timeout (ms)"
+                                    name="timeout"
+                                    type="number"
+                                    value={txtTimeout}
+                                    onChange={handleTimeoutChange}
+                                />
+                                {errors.timeout && <FormHelperText>{errors.timeout}</FormHelperText>}
+                            </FormControl>
+                        </Grid>
 
-                        {errors.general && <FormHelperText error>
-                            {/* {errors.general}*/}
-                            {(Array.isArray(errors.general) ? errors.general : [errors.general]).map((err, index) => (
-                                <span key={index} style={{ display: 'block' }}>{err}</span>
-                            ))}
-                        </FormHelperText>}
-                    </Stack>
-                </CardContent>
+                        {/* Section 3 - Validation Errors */}
+                        {errors.general && (
+                            <Grid size={12}>
+                                <Typography variant="subtitle2" color="error" sx={{ fontWeight: 600 }}>
+                                    Validation Errors
+                                </Typography>
+                                <FormHelperText error>
+                                    {(Array.isArray(errors.general) ? errors.general : [errors.general]).map((err, index) => (
+                                        <span key={index} style={{ display: 'block' }}>{err}</span>
+                                    ))}
+                                </FormHelperText>
+                            </Grid>
+                        )}
+                    </Grid>
+                </DialogContent>
                 <Divider />
-                <CardActions sx={{ justifyContent: 'flex-end' }}>
-                    <Button variant="contained" onClick={handleSubmit}>
-                        {editingDevice ? 'Update' : 'Add'}
-                    </Button>
-                    <Button variant="outlined" onClick={cancelDeviceClick}>
+                <DialogActions sx={{ py: 1.5, px: 3, justifyContent: 'flex-end' }}>
+                    <Button variant="outlined" size="small" onClick={cancelDeviceClick}>
                         Cancel
                     </Button>
-                </CardActions>
-            </Card>
+                    <Button variant="contained" size="small" onClick={handleSubmit}>
+                        {editingDevice ? 'Update' : 'Add'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </form>
     );
 }
+

@@ -1,12 +1,12 @@
 import * as React from 'react';
-import RouterLink from '@/components/RouterLink';
+import RouterLink from '../components/RouterLink';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { ArrowLeftIcon } from '@phosphor-icons/react/dist/ssr/ArrowLeft';
 
-import { paths } from '@/paths';
+import { paths } from '../paths';
 
 export default function NotFound(): React.JSX.Element {
   return (

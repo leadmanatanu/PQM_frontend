@@ -2,16 +2,11 @@ export const paths = {
     home: '/',
     auth: { signIn: '/auth/sign-in', signUp: '/auth/sign-up', resetPassword: '/auth/reset-password' },
     dashboard: {
-        overview: '/dashboard',
-        account: '/dashboard/account',
         devices: '/dashboard/devices',
-        customers: '/dashboard/customers',
-        integrations: '/dashboard/integrations',
-        settings: '/dashboard/settings',
-        mapping: '/dashboard/mapping',
-        ftpfolder: '/dashboard/ftpfolder',
+        scheduling: '/dashboard/scheduling',
         devicereadings: '/dashboard/devicereadings',
-        eventreadings: '/dashboard/eventreadings'
+        eventreadings: '/dashboard/eventreadings',
+        report: '/dashboard/report'
     },
     errors: { notFound: '/errors/not-found' },
 } as const;

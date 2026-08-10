@@ -24,9 +24,11 @@ export interface UserPopoverProps {
 }
 
 export function UserPopover({ anchorEl, onClose, open }: UserPopoverProps): React.JSX.Element {
-  const { checkSession } = useUser();
-
+  const { user, checkSession } = useUser();
   const router = useRouter();
+
+  const displayName = user ? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() || user.name : 'Tarlok Singh';
+  const emailAddress = user?.email || 'tarlokthakur@gmail.com';
 
   const handleSignOut = React.useCallback(async (): Promise<void> => {
     try {
@@ -37,12 +39,8 @@ export function UserPopover({ anchorEl, onClose, open }: UserPopoverProps): Reac
         return;
       }
 
-      // Refresh the auth state
       await checkSession?.();
-
-      // UserProvider, for this case, will not refresh the router and we need to do it manually
       router.refresh();
-      // After refresh, AuthGuard will handle the redirect
     } catch (error) {
       logger.error('Sign out error', error);
     }
@@ -51,31 +49,23 @@ export function UserPopover({ anchorEl, onClose, open }: UserPopoverProps): Reac
   return (
     <Popover
       anchorEl={anchorEl}
-      anchorOrigin={{ horizontal: 'left', vertical: 'bottom' }}
+      anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+      transformOrigin={{ horizontal: 'right', vertical: 'top' }}
       onClose={onClose}
       open={open}
-      slotProps={{ paper: { sx: { width: '240px' } } }}
+      slotProps={{ paper: { sx: { width: '220px', mt: 1 } } }}
     >
-      <Box sx={{ p: '16px 20px ' }}>
-        <Typography variant="subtitle1">Tarlok Singh</Typography>
-        <Typography color="text.secondary" variant="body2">
-          tarlokthakur@gmail.com
+      <Box sx={{ p: '12px 16px' }}>
+        <Typography variant="subtitle2" sx={{ fontWeight: 600, fontSize: '0.8125rem' }}>
+          {displayName}
+        </Typography>
+        <Typography color="text.secondary" variant="body2" sx={{ fontSize: '0.75rem' }}>
+          {emailAddress}
         </Typography>
       </Box>
       <Divider />
       <MenuList disablePadding sx={{ p: '8px', '& .MuiMenuItem-root': { borderRadius: 1 } }}>
-        <MenuItem component={RouterLink} href={paths.dashboard.settings} onClick={onClose}>
-          <ListItemIcon>
-            <GearSixIcon fontSize="var(--icon-fontSize-md)" />
-          </ListItemIcon>
-          Settings
-        </MenuItem>
-        <MenuItem component={RouterLink} href={paths.dashboard.account} onClick={onClose}>
-          <ListItemIcon>
-            <UserIcon fontSize="var(--icon-fontSize-md)" />
-          </ListItemIcon>
-          Profile
-        </MenuItem>
+
         <MenuItem onClick={handleSignOut}>
           <ListItemIcon>
             <SignOutIcon fontSize="var(--icon-fontSize-md)" />

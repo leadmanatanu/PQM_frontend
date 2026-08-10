@@ -1,11 +1,11 @@
 import * as React from 'react';
-import RouterLink from '@/components/RouterLink';
+import RouterLink from '../../components/RouterLink';
 import Box from '@mui/material/Box';
+import Card from '@mui/material/Card';
 import Stack from '@mui/material/Stack';
-import Typography from '@mui/material/Typography';
 
-import { paths } from '@/paths';
-import { DynamicLogo } from '@/components/core/logo';
+import { paths } from '../../paths';
+import { DynamicLogo } from '../../components/core/logo';
 
 export interface LayoutProps {
   children: React.ReactNode;
@@ -15,54 +15,51 @@ export function Layout({ children }: LayoutProps): React.JSX.Element {
   return (
     <Box
       sx={{
-        display: { xs: 'flex', lg: 'grid' },
+        alignItems: 'center',
+        display: 'flex',
         flexDirection: 'column',
-        gridTemplateColumns: '1fr 1fr',
-        minHeight: '100%',
+        justifyContent: 'center',
+        minHeight: '100vh',
+        p: { xs: 2, sm: 3, md: 4 },
+        backgroundColor: 'var(--mui-palette-background-default)',
+        backgroundImage:
+          'radial-gradient(50% 50% at 50% 30%, rgba(99, 91, 255, 0.08) 0%, rgba(99, 91, 255, 0) 100%)',
       }}
     >
-      <Box sx={{ display: 'flex', flex: '1 1 auto', flexDirection: 'column' }}>
-        <Box sx={{ p: 3 }}>
+      <Card
+        elevation={1}
+        sx={{
+          width: '100%',
+          maxWidth: '440px',
+          minHeight: '520px',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          boxSizing: 'border-box',
+          p: { xs: 3, sm: 4 },
+          borderRadius: '16px',
+          position: 'relative',
+          overflow: 'hidden',
+        }}
+      >
+        {/* Accent top border line representing power quality monitoring */}
+        <Box
+          sx={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: '4px',
+            background: 'linear-gradient(90deg, #635bff 0%, #15b79f 100%)',
+          }}
+        />
+        <Stack spacing={3} sx={{ alignItems: 'center' }}>
           <Box component={RouterLink} href={paths.home} sx={{ display: 'inline-block', fontSize: 0 }}>
             <DynamicLogo colorDark="light" colorLight="dark" height={32} width={122} />
           </Box>
-        </Box>
-        <Box sx={{ alignItems: 'center', display: 'flex', flex: '1 1 auto', justifyContent: 'center', p: 3 }}>
-          <Box sx={{ maxWidth: '450px', width: '100%' }}>{children}</Box>
-        </Box>
-      </Box>
-      <Box
-        sx={{
-          alignItems: 'center',
-          background: 'radial-gradient(50% 50% at 50% 50%, #122647 0%, #090E23 100%)',
-          color: 'var(--mui-palette-common-white)',
-          display: { xs: 'none', lg: 'flex' },
-          justifyContent: 'center',
-          p: 3,
-        }}
-      >
-        <Stack spacing={3}>
-          <Stack spacing={1}>
-            <Typography color="inherit" sx={{ fontSize: '24px', lineHeight: '32px', textAlign: 'center' }} variant="h1">
-              Welcome to{' '}
-              <Box component="span" sx={{ color: '#15b79e' }}>
-                PQM
-              </Box>
-            </Typography>
-            <Typography align="center" variant="subtitle1">
-              A professional template that comes with ready-to-use MUI components.
-            </Typography>
-          </Stack>
-          <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-            <Box
-              component="img"
-              alt="Widgets"
-              src="/assets/auth-widgets.png"
-              sx={{ height: 'auto', width: '100%', maxWidth: '600px' }}
-            />
-          </Box>
+          <Box sx={{ width: '100%' }}>{children}</Box>
         </Stack>
-      </Box>
+      </Card>
     </Box>
   );
 }

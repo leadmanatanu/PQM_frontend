@@ -6,6 +6,16 @@ import { MuiButton } from './button';
 import { MuiCard } from './card';
 import { MuiCardContent } from './card-content';
 import { MuiCardHeader } from './card-header';
+import {
+  MuiInputBase,
+  MuiOutlinedInput,
+  MuiInputLabel,
+  MuiChip,
+  MuiDialog,
+  MuiDialogTitle,
+  MuiDialogContent,
+  MuiDialogActions,
+} from './inputs-and-dialogs';
 import { MuiLink } from './link';
 import { MuiStack } from './stack';
 import { MuiTab } from './tab';
@@ -19,6 +29,14 @@ export const components = {
   MuiCard,
   MuiCardContent,
   MuiCardHeader,
+  MuiInputBase,
+  MuiOutlinedInput,
+  MuiInputLabel,
+  MuiChip,
+  MuiDialog,
+  MuiDialogTitle,
+  MuiDialogContent,
+  MuiDialogActions,
   MuiLink,
   MuiStack,
   MuiTab,

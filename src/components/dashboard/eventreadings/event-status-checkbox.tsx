@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { HubConnectionBuilder } from "@microsoft/signalr";
+import dayjs from "dayjs";
+import { HubConnectionBuilder, HubConnectionState } from "@microsoft/signalr";
 import { 
     Card, 
     CardHeader, 
@@ -13,7 +14,6 @@ import {
     Box, 
     Typography, 
     Alert, 
-    CircularProgress,
     Table,
     TableBody,
     TableCell,
@@ -22,10 +22,15 @@ import {
     TableRow,
     Paper
 } from "@mui/material";
-import dayjs from "dayjs";
-import { fetchConnectedHeaders, fetchDLMSObjects, fetchProfileGenericEntries, fetchEventStatusMappings } from "../../../api/device";
 
-// Definition of standard event status sections matching Gurux
+// Stub: endpoint not yet implemented on the server — component handles null gracefully
+const fetchProfileGenericEntries = async (
+    _deviceId: string | number,
+    _obisCode: string,
+    _limit?: number,
+    _startDate?: string,
+    _endDate?: string
+): Promise<{ status: boolean; data: any[] } | null> => null;
 const DEFAULT_EVENT_STATUS_SECTIONS = [
     {
         key: 'voltage',
@@ -132,76 +137,19 @@ export function EventStatusCheckboxCard({
     const [sections, setSections] = useState<any[]>(DEFAULT_EVENT_STATUS_SECTIONS);
     const [scalers, setScalers] = useState<{[key: string]: number}>({});
 
+    const hubConnectionRef = useRef<any>(null);
+    if (!hubConnectionRef.current) {
+        hubConnectionRef.current = new HubConnectionBuilder()
+            .withUrl("http://localhost:5135/hubs/meter")
+            .withAutomaticReconnect()
+            .build();
+    }
+    const connection = hubConnectionRef.current;
+
     const loadData = async () => {
         setLoading(true);
         setEntriesLoading(true);
         try {
-            // Fetch dynamic mappings from the database
-            const mappingsRes = await fetchEventStatusMappings();
-            let activeSections = DEFAULT_EVENT_STATUS_SECTIONS;
-            if (mappingsRes && mappingsRes.status && Array.isArray(mappingsRes.data) && mappingsRes.data.length > 0) {
-                const grouped = mappingsRes.data.reduce((acc: any, item: any) => {
-                    const obis = item.obisCode;
-                    if (!acc[obis]) {
-                        acc[obis] = {
-                            key: item.category,
-                            title: `${item.category.charAt(0).toUpperCase() + item.category.slice(1)} Related Events`,
-                            obisCode: obis,
-                            items: []
-                        };
-                    }
-                    acc[obis].items.push({
-                        code: item.eventCode,
-                        label: item.label,
-                        bitIndex: item.bitIndex
-                    });
-                    return acc;
-                }, {});
-                activeSections = Object.values(grouped);
-                setSections(activeSections);
-            } else {
-                setSections(DEFAULT_EVENT_STATUS_SECTIONS);
-            }
-
-            // 1. Fetch DLMS status parameter object value
-            const headerRes = await fetchConnectedHeaders(deviceId);
-            let foundObj = null;
-            let scalerMap: {[key: string]: number} = {};
-            if (headerRes && headerRes.status && headerRes.data.length > 0) {
-                for (const header of headerRes.data) {
-                    const objectsRes = await fetchDLMSObjects(header.id);
-                    if (objectsRes && objectsRes.status && Array.isArray(objectsRes.data)) {
-                        // Find the scaler profile
-                        const sObj = objectsRes.data.find((o: any) => o.obisCode === "1.0.94.91.7.255" || o.name?.toLowerCase().includes("scaler"));
-                        if (sObj && sObj.attribute2) {
-                            try {
-                                const parsed = JSON.parse(sObj.attribute2);
-                                const firstRow = Array.isArray(parsed) ? parsed[0] : parsed;
-                                if (firstRow) {
-                                    Object.keys(firstRow).forEach(key => {
-                                        const valStr = String(firstRow[key]);
-                                        const parts = valStr.split(",");
-                                        const scalerVal = Number(parts[0].trim());
-                                        if (!isNaN(scalerVal)) {
-                                            scalerMap[key] = scalerVal;
-                                        }
-                                    });
-                                }
-                            } catch (e) {
-                                console.error("Failed to parse scaler attribute:", e);
-                            }
-                        }
-
-                        const targetObj = objectsRes.data.find((o: any) => o.obisCode === obisCode);
-                        if (targetObj) {
-                            foundObj = targetObj;
-                            setDlmsObject(targetObj);
-                            setValue(targetObj.attribute2 || "");
-                        }
-                    }
-                }
-            }
-            setScalers(scalerMap);
 
             // 2. Fetch corresponding Event Profile Generic logged entries
             const profileObis = obisCode.startsWith("0.0.99.98.") ? obisCode : obisCode.replace("0.0.96.11.", "0.0.99.98.");
@@ -229,27 +177,44 @@ export function EventStatusCheckboxCard({
     }, [deviceId, obisCode, startDate, endDate]);
 
     useEffect(() => {
-        const connection = new HubConnectionBuilder()
-            .withUrl("http://localhost:5135/hubs/meter")
-            .withAutomaticReconnect()
-            .build();
+        let isStarted = false;
+        let isStopped = false;
 
-        connection.start()
-            .then(() => {
-                console.log("[SignalR] Connected to MeterHub successfully.");
-                connection.on("MeterUpdated", (updatedDeviceId: any) => {
-                    console.log(`[SignalR] Received MeterUpdated message for device: ${updatedDeviceId}`);
-                    if (String(updatedDeviceId) === String(deviceId)) {
-                        loadDataRef.current();
+        const handleMeterUpdated = (updatedDeviceId: any) => {
+            console.log(`[SignalR] Received MeterUpdated message for device: ${updatedDeviceId}`);
+            if (String(updatedDeviceId) === String(deviceId)) {
+                loadDataRef.current();
+            }
+        };
+
+        connection.on("MeterUpdated", handleMeterUpdated);
+
+        const startHubConnection = async () => {
+            try {
+                if (connection.state === HubConnectionState.Disconnected) {
+                    await connection.start();
+                    isStarted = true;
+                    if (isStopped) {
+                        await connection.stop();
+                    } else {
+                        console.log("[SignalR] Connected to MeterHub successfully.");
                     }
-                });
-            })
-            .catch(err => console.error("[SignalR] Connection to MeterHub failed: ", err));
+                }
+            } catch (err) {
+                console.error("[SignalR] Connection to MeterHub failed. Please check if the backend hub at http://localhost:5135/hubs/meter is running and CORS is configured.", err);
+            }
+        };
+
+        startHubConnection();
 
         return () => {
-            connection.stop();
+            isStopped = true;
+            connection.off("MeterUpdated", handleMeterUpdated);
+            if (isStarted && connection.state !== HubConnectionState.Disconnected) {
+                connection.stop().catch((err: any) => console.warn("[SignalR] Error stopping connection:", err));
+            }
         };
-    }, [deviceId, obisCode]);
+    }, [connection, deviceId, obisCode]);
 
     const parseEventStatusValue = (val: string, section: any): Set<number> => {
         const activeCodes = new Set<number>();
@@ -342,15 +307,7 @@ export function EventStatusCheckboxCard({
 
     const { columns, rows } = getGroupedEntries();
 
-    if (loading) {
-        return (
-            <Card>
-                <CardContent sx={{ display: 'flex', justifyContent: 'center', py: 5 }}>
-                    <CircularProgress />
-                </CardContent>
-            </Card>
-        );
-    }
+
 
     if (!dlmsObject) {
         return (
@@ -373,11 +330,7 @@ export function EventStatusCheckboxCard({
                 />
                 <Divider />
                 <CardContent>
-                    {entriesLoading ? (
-                        <Box sx={{ display: 'flex', justifyContent: 'center', py: 5 }}>
-                            <CircularProgress />
-                        </Box>
-                    ) : rows.length > 0 ? (
+                    {rows.length > 0 ? (
                         <TableContainer component={Paper} sx={{ maxHeight: 500 }}>
                             <Table stickyHeader size="small">
                                 <TableHead>

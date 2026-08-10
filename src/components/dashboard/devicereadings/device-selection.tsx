@@ -1,275 +1,316 @@
-"use client"; // <--- Add this line at the very top!
-import React, { useState } from 'react';
+'use client';
+
+import React, { useState, useEffect } from 'react';
 import {
     FormControl,
-    InputLabel, // We'll replace this with label on TextField for Autocomplete
-    Select,      // This will be removed
-    MenuItem,    // This will be removed
-    TextField,   // Needed for Autocomplete's input
+    TextField,
+    Autocomplete,
+    Card,
+    CardContent,
+    Button,
+    Stack,
+    CircularProgress,
+    Chip,
+    Typography,
+    Grid,
 } from '@mui/material';
-import { Autocomplete } from '@mui/material'; // Import Autocomplete
-import { MagnifyingGlassIcon } from '@phosphor-icons/react/dist/ssr/MagnifyingGlass';
-import Card from '@mui/material/Card';
-import CardActions from '@mui/material/CardActions';
-import CardContent from '@mui/material/CardContent';
-import CardHeader from '@mui/material/CardHeader';
-import Divider from '@mui/material/Divider';
-import Button from '@mui/material/Button';
-import Stack from '@mui/material/Stack';
 
-import dayjs, { Dayjs } from 'dayjs';
-import { DemoContainer } from '@mui/x-date-pickers/internals/demo';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
-import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import SearchIcon from '@mui/icons-material/Search';
+import Checkbox from '@mui/material/Checkbox';
+import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank';
+import CheckBoxIcon from '@mui/icons-material/CheckBox';
 
+const icon = <CheckBoxOutlineBlankIcon fontSize="small" />;
+const checkedIcon = <CheckBoxIcon fontSize="small" />;
 
-import type { Device } from '@/components/dashboard/device/devices-table';
-
-// export interface Device {
-//     id: number;
-//     name: string;
-//     ip: string;
-//     port: number;
-//     isActive: string;
-//     isDeleted: string;
-//     createdDate: Date;
-//     createdId: number;
-//     modifiedDate: Date;
-//     modifiedId: number;
-// }
+import type { Device } from '../../../components/dashboard/device/devices-table';
+import type { ProfileItem } from '../../../services/profile.service';
 
 interface DeviceFiltersProps {
-    rows: Device[];
+    devices?: Device[];
+    profiles?: ProfileItem[];
+    parameters?: any[];
+    selectedDeviceId?: string | number;
+    selectedProfileId?: number | null;
     onDeviceSelect?: (id: string | number) => void;
-    paramArray: any[];
-    onSearch?: (searchParams: {
+    onProfileSelect?: (profileId: number | null) => void;
+    onScan?: (scanParams: {
         deviceId: string | number | null;
-        startTime: Dayjs | null;
-        endTime: Dayjs | null;
-        paramId: string | number | null;
+        profileId: number | null;
+        paramIds: (string | number)[];
     }) => void;
+    isLoadingProfiles?: boolean;
+    isLoadingParams?: boolean;
+    isScanning?: boolean;
 }
 
 export function DeviceFilters({
-    rows = [],
+    devices = [],
+    profiles = [],
+    parameters = [],
+    selectedDeviceId = 0,
+    selectedProfileId = null,
     onDeviceSelect = () => { },
-    paramArray = [],
-    onSearch = () => { },
+    onProfileSelect = () => { },
+    onScan = () => { },
+    isLoadingProfiles = false,
+    isLoadingParams = false,
+    isScanning = false,
 }: DeviceFiltersProps): React.JSX.Element {
     const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
-    const [endValue, setEndValue] = useState<Dayjs | null>(dayjs());
-    const [startValue, setStartValue] = useState<Dayjs | null>(
-        dayjs().subtract(1, "day")
-    );
-    const [selectedParam, setSelectedParam] = useState<any | null>(null);
+    const [selectedProfile, setSelectedProfile] = useState<ProfileItem | null>(null);
+    const [selectedParams, setSelectedParams] = useState<any[]>([]);
 
-    // Validation states
     const [errors, setErrors] = useState({
         device: false,
-        paramId: false,
-        start: false,
-        end: false,
     });
 
-    const handleChange = (
-        event: React.SyntheticEvent, // Event object (can be null for some actions)
-        newValue: Device | null // The selected Device object, or null if cleared
+    // Sync internal selectedDevice with prop changes
+    useEffect(() => {
+        if (selectedDeviceId && devices.length > 0) {
+            const found = devices.find(d => String(d.id) === String(selectedDeviceId));
+            if (found) setSelectedDevice(found);
+        } else if (!selectedDeviceId) {
+            setSelectedDevice(null);
+        }
+    }, [selectedDeviceId, devices]);
+
+    // Sync internal selectedProfile with prop changes
+    useEffect(() => {
+        if (selectedProfileId && profiles.length > 0) {
+            const found = profiles.find(p => p.profileId === selectedProfileId);
+            if (found) setSelectedProfile(found);
+        } else if (!selectedProfileId) {
+            setSelectedProfile(null);
+        }
+    }, [selectedProfileId, profiles]);
+
+    // Synchronize selected parameters with current parameters list
+    useEffect(() => {
+        if (selectedParams.length > 0) {
+            const validIds = new Set(parameters.map((p: any) => p.id));
+            const filtered = selectedParams.filter((p: any) => validIds.has(p.id));
+            if (filtered.length !== selectedParams.length) {
+                setSelectedParams(filtered);
+            }
+        }
+    }, [parameters]);
+
+    const handleDeviceChange = (
+        event: React.SyntheticEvent,
+        newValue: Device | null
     ) => {
-        setSelectedDevice(newValue); // Update internal state with the selected object
-        onDeviceSelect(newValue ? newValue.id : 0); // Pass string ID or null
+        setSelectedDevice(newValue);
+        setSelectedProfile(null);
+        setSelectedParams([]);
+        onDeviceSelect(newValue ? newValue.id : 0);
+        onProfileSelect(null);
     };
 
-    const handleParameterChange = (
-        event: React.SyntheticEvent, // Event object (can be null for some actions)
-        newValue: any | null // The selected Device object, or null if cleared
+    const handleProfileChange = (
+        event: React.SyntheticEvent,
+        newValue: ProfileItem | null
     ) => {
-        setSelectedParam(newValue); // Update internal state with the selected object
-        //onDeviceSelect(newValue ? newValue.id : null); // Pass string ID or null
+        setSelectedProfile(newValue);
+        setSelectedParams([]);
+        onProfileSelect(newValue ? newValue.profileId : null);
     };
 
-    const handleSearch = () => {
-        console.log("handleSearch");
-        const newErrors = {
-            device: !selectedDevice,
-            paramId: !selectedParam,
-            start: !startValue,
-            end: !endValue,
-        };
-        setErrors(newErrors);
+    const handleScanClick = () => {
+        const isDeviceMissing = !selectedDevice;
+        setErrors({ device: isDeviceMissing });
 
-        if (Object.values(newErrors).some(Boolean)) return;
-        onSearch({
+        if (isDeviceMissing) return;
+
+        onScan({
             deviceId: selectedDevice ? selectedDevice.id : null,
-            startTime: startValue,
-            endTime: endValue,
-            paramId: selectedParam ? selectedParam.id : null,
+            profileId: selectedProfile ? selectedProfile.profileId : null,
+            paramIds: selectedParams.map((p: any) => p.id),
         });
     };
 
-    // <Card sx={{ p: 2, maxWidth: '700px' }}>
+    const getDeviceLabel = (device: Device) => {
+        if (!device) return '';
+        const details = device.serialNumber ? device.serialNumber : device.ip ? device.ip : null;
+        return details ? `${device.name} (${details})` : device.name;
+    };
+
     return (
-        <Card sx={{ maxWidth: '600px', width: '100%', borderRadius: '8px' }}>
-            <Divider />
-            <CardContent sx={{ p: 2 }}>
-                <Stack spacing={2} sx={{ maxWidth: '100%' }}>
-                    <FormControl fullWidth size="small">
-                        <Autocomplete
-                            id="device-filter-autocomplete"
-                            options={rows}
-                            size="small"
-                            getOptionLabel={(device) => device.name}
-                            value={selectedDevice}
-                            onChange={handleChange}
-                            isOptionEqualToValue={(option, value) => option.id === value.id}
-                            renderInput={(params) => (
-                                <TextField
-                                    {...params}
-                                    label="Select or type to search device"
-                                    variant="outlined"
+        <Card sx={{ maxWidth: '1400px', width: '100%', borderRadius: '8px' }}>
+            <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                <Grid container spacing={1.5}>
+                    {/* Row 1: Device Dropdown (6 cols), Profile Dropdown (6 cols) */}
+                    <Grid size={{ xs: 12, md: 6 }}>
+                        <FormControl fullWidth size="small">
+                            <Autocomplete
+                                id="device-filter-autocomplete"
+                                options={devices}
+                                size="small"
+                                getOptionLabel={getDeviceLabel}
+                                value={selectedDevice}
+                                onChange={handleDeviceChange}
+                                isOptionEqualToValue={(option, value) => option.id === value.id}
+                                renderInput={(params) => (
+                                    <TextField
+                                        {...params}
+                                        label="Select or type to search device"
+                                        variant="outlined"
+                                        size="small"
+                                        error={errors.device}
+                                        helperText={errors.device ? "Device selection is required" : ""}
+                                    />
+                                )}
+                                openOnFocus
+                            />
+                        </FormControl>
+                    </Grid>
+
+                    <Grid size={{ xs: 12, md: 6 }}>
+                        <FormControl fullWidth size="small">
+                            <Autocomplete
+                                id="profile-filter-autocomplete"
+                                options={profiles}
+                                size="small"
+                                disabled={!selectedDevice || isLoadingProfiles}
+                                getOptionLabel={(profile) => profile.friendlyName || profile.obisCode || ''}
+                                value={selectedProfile}
+                                onChange={handleProfileChange}
+                                isOptionEqualToValue={(option, value) => option.profileId === value.profileId}
+                                renderOption={(props, option) => (
+                                    <li {...props} key={option.profileId}>
+                                        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ width: '100%' }}>
+                                            <Typography variant="body2">{option.friendlyName}</Typography>
+                                            {/* <Chip
+                                                // label={option.category || 'TimeSeries'}
+                                                size="small"
+                                                variant="outlined"
+                                                color={option.category === 'Static' ? 'secondary' : 'primary'}
+                                                sx={{ fontSize: '0.7rem', height: '20px', ml: 1 }}
+                                            /> */}
+                                        </Stack>
+                                    </li>
+                                )}
+                                renderInput={(params) => (
+                                    <TextField
+                                        {...params}
+                                        label={
+                                            selectedDevice
+                                                ? "Select or type profile (optional - default all)"
+                                                : "Select a device first"
+                                        }
+                                        variant="outlined"
+                                        size="small"
+                                    />
+                                )}
+                                openOnFocus
+                            />
+                        </FormControl>
+                    </Grid>
+
+                    {/* Row 2: Parameters (Flex with Scan Button) */}
+                    <Grid size={12}>
+                        <Stack direction="row" spacing={1.5} alignItems="flex-start" sx={{ width: '100%' }}>
+                            <FormControl fullWidth size="small">
+                                <Autocomplete
+                                    id="parameter-filter-autocomplete"
+                                    multiple
+                                    disableCloseOnSelect
+                                    options={parameters.length > 0 ? [{ id: 'SELECT_ALL', name: 'Select All' }, ...parameters] : []}
                                     size="small"
-                                    error={errors.device}
-                                    helperText={errors.device ? "Device is required" : ""}
-                                />
-                            )}
-                            openOnFocus
-                        />
-                    </FormControl>
-                    <FormControl fullWidth size="small">
-                        <Autocomplete
-                            id="parameter-filter-autocomplete"
-                            options={paramArray}
-                            size="small"
-                            getOptionLabel={(param) => param.name}
-                            value={selectedParam}
-                            onChange={handleParameterChange}
-                            isOptionEqualToValue={(option, value) => option.id === value.id}
-                            renderInput={(params) => (
-                                <TextField
-                                    {...params}
-                                    label="Select or type to parameter"
-                                    variant="outlined"
-                                    size="small"
-                                    error={errors.paramId}
-                                    helperText={errors.paramId ? "Parameter is required" : ""}
-                                />
-                            )}
-                            openOnFocus
-                        />
-                    </FormControl>
-                    <FormControl fullWidth>
-                        <LocalizationProvider dateAdapter={AdapterDayjs}>
-                            <DemoContainer components={['DatePicker', 'DatePicker']}>
-                                <DatePicker
-                                    label="Start Date"
-                                    value={startValue}
-                                    onChange={(newValue) => setStartValue(newValue)}
-                                    slotProps={{
-                                        textField: {
-                                            size: 'small',
-                                            error: errors.start,
-                                            helperText: errors.start
-                                                ? "Start date is required"
-                                                : "",
-                                        },
+                                    disabled={!selectedDevice || isLoadingParams}
+                                    getOptionLabel={(param) => param.name || ''}
+                                    value={selectedParams}
+                                    onChange={(event, newValue) => {
+                                        const selectAllObj = newValue.find((item: any) => item.id === 'SELECT_ALL');
+                                        if (selectAllObj) {
+                                            if (selectedParams.length === parameters.length) {
+                                                setSelectedParams([]);
+                                            } else {
+                                                setSelectedParams([...parameters]);
+                                            }
+                                        } else {
+                                            setSelectedParams(newValue);
+                                        }
                                     }}
-                                />
-                                <DatePicker
-                                    label="End Date"
-                                    value={endValue}
-                                    onChange={(newValue) => setEndValue(newValue)}
-                                    slotProps={{
-                                        textField: {
-                                            size: 'small',
-                                            error: errors.end,
-                                            helperText: errors.end ? "End date is required" : "",
-                                        },
+                                    isOptionEqualToValue={(option, value) => option.id === value.id}
+                                    renderOption={(props, option, { selected }) => {
+                                        if (option.id === 'SELECT_ALL') {
+                                            const allSelected = parameters.length > 0 && selectedParams.length === parameters.length;
+                                            const someSelected = selectedParams.length > 0 && selectedParams.length < parameters.length;
+                                            return (
+                                                <li {...props} key="SELECT_ALL" style={{ borderBottom: '1px solid var(--mui-palette-divider)', fontWeight: 600 }}>
+                                                    <Checkbox
+                                                        icon={icon}
+                                                        checkedIcon={checkedIcon}
+                                                        style={{ marginRight: 8 }}
+                                                        checked={allSelected}
+                                                        indeterminate={someSelected}
+                                                    />
+                                                    Select All ({parameters.length})
+                                                </li>
+                                            );
+                                        }
+                                        return (
+                                            <li {...props} key={option.id}>
+                                                <Checkbox
+                                                    icon={icon}
+                                                    checkedIcon={checkedIcon}
+                                                    style={{ marginRight: 8 }}
+                                                    checked={selected}
+                                                />
+                                                {option.name}
+                                            </li>
+                                        );
                                     }}
+                                    renderTags={(tagValue, getTagProps) =>
+                                        tagValue.map((option, index) => {
+                                            const { key, ...chipProps } = getTagProps({ index });
+                                            return (
+                                                <Chip
+                                                    key={key}
+                                                    label={option.name}
+                                                    size="small"
+                                                    {...chipProps}
+                                                    sx={{ fontSize: '0.75rem', height: '22px' }}
+                                                />
+                                            );
+                                        })
+                                    }
+                                    renderInput={(params) => (
+                                        <TextField
+                                            {...params}
+                                            label={
+                                                selectedDevice
+                                                    ? selectedParams.length > 0
+                                                        ? `${selectedParams.length} parameter${selectedParams.length > 1 ? 's' : ''} selected`
+                                                        : "Select parameters (optional - default all)"
+                                                    : "Select a device first"
+                                            }
+                                            variant="outlined"
+                                            size="small"
+                                        />
+                                    )}
+                                    openOnFocus
+                                    limitTags={4}
+                                    getLimitTagsText={(more) => `+${more} more`}
                                 />
-                            </DemoContainer>
-                        </LocalizationProvider>
-                    </FormControl>
-                </Stack>
+                            </FormControl>
+
+                            <Button
+                                variant="contained"
+                                color="primary"
+                                size="medium"
+                                startIcon={isScanning ? <CircularProgress size={16} color="inherit" /> : <SearchIcon fontSize="small" />}
+                                onClick={handleScanClick}
+                                disabled={isScanning}
+                                sx={{ height: 38, minWidth: 120, px: 2.5, fontWeight: 600, fontSize: '0.8125rem', flexShrink: 0 }}
+                            >
+                                {isScanning ? "Scanning..." : "Scan"}
+                            </Button>
+                        </Stack>
+                    </Grid>
+                </Grid>
             </CardContent>
-            <Divider />
-            <CardActions sx={{ justifyContent: 'flex-end', py: 1, px: 2 }}>
-                <Button variant="contained" size="small" onClick={handleSearch}>
-                    Search
-                </Button>
-            </CardActions>
         </Card>
     );
 }
-
-
-// export function DeviceFilters({
-//   rows = [],
-//   onDeviceSelect = () => {},
-// }: DeviceFiltersProps): React.JSX.Element {
-//   // We'll manage the *selected Device object* internally for Autocomplete.
-//   // We need to derive this from an initial `selectedId` if available, or set to null.
-//   const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
-
-//   // If you had an initial `selectedId` coming into DeviceFilters, you'd use useEffect
-//   // to set the initial `selectedDevice` state based on `rows`.
-//   // Example if DeviceFiltersProps had an optional `initialSelectedId: string | number;`
-//   // useEffect(() => {
-//   //   if (initialSelectedId) {
-//   //     const foundDevice = rows.find(d => d.id === initialSelectedId);
-//   //     setSelectedDevice(foundDevice || null);
-//   //   }
-//   // }, [initialSelectedId, rows]);
-
-
-//   // Autocomplete's onChange handler provides the selected *object* or null.
-//   // We then extract the ID to match your existing onDeviceSelect callback.
-//   const handleChange = (
-//     event: React.SyntheticEvent, // Event object (can be null for some actions)
-//     newValue: Device | null      // The selected Device object, or null if cleared
-//   ) => {
-//     setSelectedDevice(newValue); // Update internal state with the selected object
-
-//     // Call the parent's callback, passing the ID (or null if cleared)
-//     if (onDeviceSelect) {
-//       onDeviceSelect(newValue ? newValue.id : null);
-//     }
-//   };
-
-//   return (
-//     <Card sx={{ p: 2, maxWidth: '500px' }}>
-//       <FormControl fullWidth>
-//         {/* InputLabel and Select are removed. Autocomplete uses TextField for its input. */}
-//         {/* <InputLabel id="device-select-label">Select device</InputLabel> */}
-
-//         <Autocomplete
-//           id="device-filter-autocomplete" // Unique ID for accessibility
-//           options={rows} // Provide the full array of Device objects
-//           getOptionLabel={(device) => device.name} // Tell Autocomplete how to get the display string from a Device object
-//           value={selectedDevice} // The currently selected Device object (from state)
-//           onChange={handleChange} // Our handler for selection/clearing
-//           // Crucial for objects: tells Autocomplete how to compare an option from `options`
-//           // with the `value` prop to determine if they represent the same item.
-//           isOptionEqualToValue={(option, value) => option.id === value.id}
-//           renderInput={(params) => (
-//             // TextField replaces InputLabel and provides the input field
-//             <TextField
-//               {...params}
-//               label="Select or type to search device" // This serves as the label for the input
-//               variant="outlined" // Standard Material-UI TextField variants
-//             />
-//           )}
-//           // Optional: Makes the dropdown open when the input is focused, like a standard Select
-//           openOnFocus
-//           // Optional: To customize how each option is rendered in the dropdown
-//           // renderOption={(props, option) => (
-//           //   <li {...props} key={option.id}>
-//           //     {option.name}
-//           //     {/* You could add more info here, e.g., device.status */}
-//           //   </li>
-//           // )}
-//         />
-//       </FormControl>
-//     </Card>
-//   );
-// }

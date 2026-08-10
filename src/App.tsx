@@ -7,9 +7,10 @@ import DashboardLayout from '@/app/dashboard/layout';
 import { Layout as AuthLayout } from '@/components/auth/layout';
 
 import DevicesPage from '@/app/dashboard/devices/page';
-import MappingPage from '@/app/dashboard/mapping/page';
+import SchedulingPage from '@/app/dashboard/scheduling/page';
 import DeviceReadingsPage from '@/app/dashboard/devicereadings/page';
 import EventReadingsPage from '@/app/dashboard/eventreadings/page';
+import ReportPage from '@/app/dashboard/report/page';
 
 import SignInPage from '@/app/auth/sign-in/page';
 import SignUpPage from '@/app/auth/sign-up/page';
@@ -34,9 +35,10 @@ export default function App() {
               {/* Dashboard Layout Wrapper */}
               <Route element={<DashboardLayout />}>
                 <Route path="/dashboard/devices" element={<DevicesPage />} />
-                <Route path="/dashboard/mapping" element={<MappingPage />} />
+                <Route path="/dashboard/scheduling" element={<SchedulingPage />} />
                 <Route path="/dashboard/devicereadings" element={<DeviceReadingsPage />} />
                 <Route path="/dashboard/eventreadings" element={<EventReadingsPage />} />
+                <Route path="/dashboard/report" element={<ReportPage />} />
                 {/* Redirect /dashboard to /dashboard/devices */}
                 <Route path="/dashboard" element={<Navigate to="/dashboard/devices" replace />} />
               </Route>
