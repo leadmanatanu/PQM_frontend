@@ -1,7 +1,12 @@
-import * as React from 'react';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
+import Chip from '@mui/material/Chip';
 import Divider from '@mui/material/Divider';
+import IconButton from '@mui/material/IconButton';
+import ListItemIcon from '@mui/material/ListItemIcon';
+import ListItemText from '@mui/material/ListItemText';
+import Menu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
@@ -9,53 +14,80 @@ import TableHead from '@mui/material/TableHead';
 import TablePagination from '@mui/material/TablePagination';
 import TableRow from '@mui/material/TableRow';
 import Typography from '@mui/material/Typography';
-import Chip from '@mui/material/Chip';
-import IconButton from '@mui/material/IconButton';
-import Menu from '@mui/material/Menu';
-import MenuItem from '@mui/material/MenuItem';
-import ListItemIcon from '@mui/material/ListItemIcon';
-import ListItemText from '@mui/material/ListItemText';
 import dayjs from 'dayjs';
+import * as React from 'react';
 
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import SyncIcon from '@mui/icons-material/Sync';
-import EditIcon from '@mui/icons-material/Edit';
 
-import { useSelection } from '../../../hooks/use-selection';
 import { useDeviceStatus } from '../../../hooks/use-device-status';
+import { useSelection } from '../../../hooks/use-selection';
 
 export interface Device {
-    id: number;
-    name: string;
-    ip: string;
-    port: number;
-    isActive: boolean | string;
-    isDeleted?: boolean | string;
-    createdDate?: Date;
-    createdId?: number;
-    modifiedDate?: Date;
-    modifiedId?: number;
-    serialNumber: string;
-    consumerNumber: string;
-    lastSync?: Date;
-    clientAddress?: number;
-    serverAddress?: number;
-    authentication?: string;
-    password?: string;
-    timeout?: number;
-    status?: string;
-    lastConnectionAttempt?: Date;
-    lastError?: string;
-    isConfigured?: boolean;
-    meterTypeName?: string;
-    meterType?: string;
-    meterTypeId?: number | string;
-    timeZoneId?: string;
-    hasScheduleConfigured?: boolean;
-    isScheduleEnabled?: boolean;
-    scheduledTime?: string;
-}
 
+    id: number;
+
+    name: string;
+
+    ip: string;
+
+    PORT: number;
+
+    isActive: boolean | string;
+
+    isDeleted?: boolean | string;
+
+    createdDate?: Date;
+
+    createdId?: number;
+
+    modifiedDate?: Date;
+
+    modifiedId?: number;
+
+    serialNumber: string;
+
+    consumerNumber: string;
+
+    lastSync?: Date;
+
+    clientAddress?: number;
+
+    serverAddress?: number;
+
+    authentication?: string;
+
+    password?: string;
+
+    timeout?: number;
+
+    status?: string;
+
+    lastConnectionAttempt?: Date;
+
+    lastError?: string;
+
+    isConfigured?: boolean;
+
+    meterTypeName?: string;
+
+    meterType?: string;
+
+    meterTypeId?: number | null;
+
+    timeZoneId?: string;
+
+    hasScheduleConfigured?: boolean;
+
+    isScheduleEnabled?: boolean;
+
+    scheduledTime?: string;
+
+    deviceSyncScheduleId?: number | null;
+
+}
 interface DevicesTableProps {
     count?: number;
     page?: number;
@@ -76,6 +108,7 @@ export function DevicesTable({
     rowsPerPage = 10,
     show = true,
     onEdit = () => { },
+    onDelete = () => { },
     onSyncNow = () => { },
     syncingDeviceIds = new Set<number>(),
 }: DevicesTableProps): React.JSX.Element | null {
@@ -115,6 +148,12 @@ export function DevicesTable({
         }
         handleCloseMenu();
     };
+    const handleDeleteClick = () => {
+    if (selectedDevice) {
+        onDelete(selectedDevice.id);
+    }
+    handleCloseMenu();
+    };
 
     const selectedDeviceIsSyncing = selectedDevice
         ? (liveStatuses[selectedDevice.id]?.status === 'Syncing' || syncingDeviceIds.has(selectedDevice.id))
@@ -133,7 +172,7 @@ export function DevicesTable({
                             <TableCell sx={{ fontWeight: 600 }}>Connection</TableCell>
                             <TableCell sx={{ fontWeight: 600 }}>Scheduled</TableCell>
                             <TableCell sx={{ fontWeight: 600 }}>IP</TableCell>
-                            <TableCell sx={{ fontWeight: 600 }}>PORT</TableCell>
+                            {/* <TableCell sx={{ fontWeight: 600 }}>PORT</TableCell> */}
                             <TableCell sx={{ fontWeight: 600 }}>Last Sync</TableCell>
                             <TableCell sx={{ fontWeight: 600 }} align="center">Action</TableCell>
                         </TableRow>
@@ -141,7 +180,7 @@ export function DevicesTable({
                     <TableBody>
                         {rows.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={10} align="center" sx={{ py: 3 }}>
+                                <TableCell colSpan={9} align="center" sx={{ py: 3 }}>
                                     <Typography variant="body2" color="text.secondary">
                                         No devices found.
                                     </Typography>
@@ -153,23 +192,10 @@ export function DevicesTable({
                                 
                                 // Merge static DB data with live SignalR updates
                                 const live = liveStatuses[row.id];
-                                const connectionStatus = live ? live.status : (row.status ?? 'Offline');
+                                const connectionStatus =live?.status === 'Online' || live?.status === 'Syncing'? 'Online': 'Offline';
                                 const lastSync = live && live.lastSync ? live.lastSync : row.lastSync;
-                                const isSyncing = connectionStatus === 'Syncing' || syncingDeviceIds.has(row.id);
-
-                                const statusColor = (() => {
-                                    if (isSyncing) return 'info';
-                                    switch (connectionStatus) {
-                                        case 'Online':    return 'success';
-                                        case 'Connecting': return 'warning';
-                                        case 'Error':     return 'error';
-                                        case 'Offline':   return 'default';
-                                        case 'Disabled':  return 'default';
-                                        default:          return 'default';
-                                    }
-                                })() as 'success' | 'warning' | 'error' | 'default' | 'info';
-
-                                const statusVariant = (connectionStatus === 'Online' || isSyncing) ? 'filled' : 'outlined';
+                                const statusColor =connectionStatus === 'Online' ? 'success' : 'default';
+                                const statusVariant =connectionStatus === 'Online' ? 'filled' : 'outlined';
 
                                 const formatSchedTime = (t?: string) => {
                                     if (!t) return '';
@@ -208,7 +234,7 @@ export function DevicesTable({
                                         </TableCell>
                                         <TableCell>
                                             <Chip
-                                                label={isSyncing ? 'Syncing...' : connectionStatus}
+                                                label={connectionStatus}
                                                 color={statusColor}
                                                 size="small"
                                                 variant={statusVariant}
@@ -243,7 +269,6 @@ export function DevicesTable({
                                             )}
                                         </TableCell>
                                         <TableCell sx={{ whiteSpace: 'nowrap' }}>{row.ip}</TableCell>
-                                        <TableCell>{row.port}</TableCell>
                                         <TableCell sx={{ whiteSpace: 'nowrap' }}>
                                             {lastSync
                                                 ? dayjs(lastSync).format('MMM D, YYYY HH:mm')
@@ -299,6 +324,12 @@ export function DevicesTable({
                         <EditIcon fontSize="small" />
                     </ListItemIcon>
                     <ListItemText>Edit</ListItemText>
+                </MenuItem>
+                <MenuItem onClick={handleDeleteClick}>
+                    <ListItemIcon>
+                        <DeleteIcon fontSize="small" />
+                    </ListItemIcon>
+                    <ListItemText>Delete</ListItemText>
                 </MenuItem>
             </Menu>
         </Card>
