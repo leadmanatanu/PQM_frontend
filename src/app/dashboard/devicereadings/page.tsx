@@ -22,7 +22,7 @@ export default function Page(): React.JSX.Element {
     const [devices, setDevices] = useState<Device[]>([]);
     const [profiles, setProfiles] = useState<ProfileItem[]>([]);
     const [selectedDeviceId, setSelectedDeviceId] = useState<string | number>(0);
-    const [selectedProfileId, setSelectedProfileId] = useState<number | null>(null);
+    const [selectedProfileIds, setSelectedProfileIds] = useState<number[]>([]);
     const [devParamArr, setDevParamArr] = useState<any[]>([]);
 
     // Live Scan States
@@ -53,7 +53,9 @@ export default function Page(): React.JSX.Element {
         loadInitialData();
     }, []);
 
-    const loadParameters = async (deviceId: string | number, profileId: number | null) => {
+    // Fetches and merges parameters across one or more selected profiles.
+    // If profileIds is empty, fetches the device's default/full parameter list (profileId = null).
+    const loadParameters = async (deviceId: string | number, profileIds: number[]) => {
         if (!deviceId || Number(deviceId) <= 0) {
             setDevParamArr([]);
             return;
@@ -61,8 +63,14 @@ export default function Page(): React.JSX.Element {
 
         setLoading('parameters');
         try {
-            const fetchedDeviceParameter = await fetchDeviceParameter(deviceId, profileId);
-            const rawList = fetchedDeviceParameter?.data ?? [];
+            const idsToFetch = profileIds.length > 0 ? profileIds : [null];
+
+            const results = await Promise.all(
+                idsToFetch.map((pid) => fetchDeviceParameter(deviceId, pid))
+            );
+
+            const rawList = results.flatMap((r) => r?.data ?? []);
+
             const seenNames = new Set<string>();
             const uniqueParams = rawList.filter((param: any) => {
                 if (param.isVisible === false) return false;
@@ -81,23 +89,23 @@ export default function Page(): React.JSX.Element {
 
     const handleDeviceSelection = async (id: string | number) => {
         setSelectedDeviceId(id);
-        setSelectedProfileId(null);
+        setSelectedProfileIds([]);
         setHasScanned(false);
         setScanItems([]);
         setScannedAt(null);
         setConcurrencyError(null);
         setErrorMessage(null);
-        await loadParameters(id, null);
+        await loadParameters(id, []);
     };
 
-    const handleProfileSelection = async (profileId: number | null) => {
-        setSelectedProfileId(profileId);
-        await loadParameters(selectedDeviceId, profileId);
+    const handleProfileSelection = async (profileIds: number[]) => {
+        setSelectedProfileIds(profileIds);
+        await loadParameters(selectedDeviceId, profileIds);
     };
 
     const handleScanSubmit = async (params: {
         deviceId: string | number | null;
-        profileId: number | null;
+        profileIds: number[];
         paramIds: (string | number)[];
     }) => {
         if (!params.deviceId) return;
@@ -108,10 +116,11 @@ export default function Page(): React.JSX.Element {
         setErrorMessage(null);
 
         try {
-            const result = await scanDevice(params.deviceId, params.profileId, params.paramIds, (statusMsg) => {
-                console.log(`[LIVE_SCAN_STATUS_CHANGE][${new Date().toISOString()}] ${statusMsg}`);
-                setScanStatusText(statusMsg);
-            });
+            const result = await scanDevice(
+                params.deviceId,
+                params.profileIds.length > 0 ? params.profileIds : null,
+                params.paramIds
+            );
             if (result.status && result.data) {
                 setScanItems(result.data.items ?? []);
                 setScannedAt(result.data.scannedAt ?? new Date().toISOString());
@@ -139,7 +148,7 @@ export default function Page(): React.JSX.Element {
                 profiles={profiles}
                 parameters={devParamArr}
                 selectedDeviceId={selectedDeviceId}
-                selectedProfileId={selectedProfileId}
+                selectedProfileIds={selectedProfileIds}
                 onDeviceSelect={handleDeviceSelection}
                 onProfileSelect={handleProfileSelection}
                 onScan={handleScanSubmit}
@@ -161,4 +170,3 @@ export default function Page(): React.JSX.Element {
         </Stack>
     );
 }
-

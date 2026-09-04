@@ -196,27 +196,50 @@ export const syncDeviceNow = async (
     deviceId: string | number
 ): Promise<any> => {
     try {
-        const { data } =
-            await apiClient.post(
-                `/device/${deviceId}/sync`
-            );
+        const { data } = await apiClient.post(
+            `/device/${deviceId}/sync`
+        );
 
-        return data;
+        // Backend returned HTTP 200 but operation failed
+        if (!data?.status) {
+            return {
+                status: false,
+                statusCode: data?.statusCode,
+                message:
+                    data?.errors?.[0] ||
+                    data?.message ||
+                    data?.data?.message ||
+                    `Failed to trigger sync for device ${deviceId}.`
+            };
+        }
+
+        return {
+            status: true,
+            statusCode: data?.statusCode,
+            data: data?.data,
+            message:
+                data?.data?.message ||
+                data?.message ||
+                `Sync request submitted for device ${deviceId}.`
+        };
+
     } catch (error: any) {
         console.error(
             'Error triggering device sync:',
             error
         );
 
-        return (
-            error?.response?.data || {
-                status: false,
-                message: 'Failed to trigger sync'
-            }
-        );
+        return {
+            status: false,
+            statusCode: error?.response?.status,
+            message:
+                error?.response?.data?.errors?.[0] ||
+                error?.response?.data?.message ||
+                error?.message ||
+                `Failed to trigger sync for device ${deviceId}.`
+        };
     }
 };
-
 
 // ============================================================
 // ENABLE DEVICE SYNC
@@ -474,9 +497,8 @@ export const saveDeviceConfiguration = async (
 
 export const scanDevice = async (
     deviceId: string | number,
-    profileId?: number | null,
-    paramIds?: (string | number)[] | null,
-    onStatusChange?: (statusText: string) => void
+    profileIds?: number[] | null,
+    paramIds?: (string | number)[] | null
 ): Promise<{
     status: boolean;
     data?: any;
@@ -484,270 +506,46 @@ export const scanDevice = async (
     isConcurrencyError?: boolean;
 }> => {
     try {
+        const { data } = await apiClient.post(
+            `/device/${deviceId}/live-scan`,
+            {
+                profileIds: profileIds && profileIds.length > 0 ? profileIds : null,
+                parameterIds: paramIds && paramIds.length > 0 ? paramIds : null
+            }
+        );
 
-        // --------------------------------------------------------
-        // PHASE 1: Queue scan request
-        // --------------------------------------------------------
-
-        const postResp =
-            await apiClient.post(
-                `/device/${deviceId}/scan`,
-                {
-                    profileId:
-                        profileId || null,
-
-                    parameterIds:
-                        paramIds &&
-                        paramIds.length > 0
-                            ? paramIds
-                            : null
-                }
-            );
-
-        if (!postResp.data?.status) {
-            return {
-                status: false,
-                error:
-                    postResp.data?.errors?.[0] ||
-                    'Failed to queue scan request.'
-            };
+        if (!data?.status) {
+            return { status: false, error: data?.errors?.[0] || 'Live scan failed.' };
         }
 
-        const {
-            scanRequestId
-        } = postResp.data.data;
-
-
-        // --------------------------------------------------------
-        // PHASE 2: Poll for result
-        // --------------------------------------------------------
-
-        const POLL_INTERVAL_MS = 1500;
-
-        const TIMEOUT_MS =
-            5 * 60 * 1000;
-
-        const deadline =
-            Date.now() + TIMEOUT_MS;
-
-        while (Date.now() < deadline) {
-
-            await new Promise(
-                res =>
-                    setTimeout(
-                        res,
-                        POLL_INTERVAL_MS
-                    )
-            );
-
-            let pollResp: any;
-
-            try {
-                pollResp =
-                    await apiClient.get(
-                        `/device/${deviceId}/scan/result/${scanRequestId}`
-                    );
-            } catch (pollErr: any) {
-
-                if (
-                    pollErr.response?.status ===
-                    409
-                ) {
-                    const msg =
-                        pollErr.response.data
-                            ?.errors?.[0] ||
-                        'Device is currently syncing — please try scanning again in a moment';
-
-                    return {
-                        status: false,
-                        error: msg,
-                        isConcurrencyError: true
-                    };
-                }
-
-                continue;
-            }
-
-            const pollData =
-                pollResp?.data;
-
-            if (!pollData)
-                continue;
-
-
-            if (!pollData.status) {
-
-                const msg =
-                    pollData?.errors?.[0] ||
-                    'Scan failed.';
-
-                const isConcurrency =
-                    msg
-                        .toLowerCase()
-                        .includes('syncing') ||
-                    msg
-                        .toLowerCase()
-                        .includes('scanning');
-
-                return {
-                    status: false,
-                    error: msg,
-                    isConcurrencyError:
-                        isConcurrency
-                };
-            }
-
-
-            const result =
-                pollData.data;
-
-            if (!result)
-                continue;
-
-
-            // ----------------------------------------------------
-            // Pending
-            // ----------------------------------------------------
-
-            if (
-                result.status ===
-                'Pending'
-            ) {
-
-                if (
-                    Date.now() -
-                    (deadline - TIMEOUT_MS) >
-                    45000
-                ) {
-                    return {
-                        status: false,
-                        error:
-                            'Scan engine appears to be offline — request was queued but not processed by PQM.Console.'
-                    };
-                }
-
-                onStatusChange?.(
-                    'Scan queued, waiting for current sync to finish...'
-                );
-
-                continue;
-            }
-
-
-            // ----------------------------------------------------
-            // Processing
-            // ----------------------------------------------------
-
-            if (
-                result.status ===
-                'Processing'
-            ) {
-
-                onStatusChange?.(
-                    'Connecting to DLMS meter and scanning live values...'
-                );
-
-                continue;
-            }
-
-
-            // ----------------------------------------------------
-            // Completed
-            // ----------------------------------------------------
-
-            const normalized = {
-
-                scannedAt:
-                    result.scannedAt ??
-                    result.ScannedAt,
-
-                deviceId:
-                    result.deviceId ??
-                    result.DeviceId,
-
-                deviceName:
-                    result.deviceName ??
-                    result.DeviceName,
-
-                items:
-                    (
-                        result.items ??
-                        result.Items ??
-                        []
-                    ).map(
-                        (it: any) => ({
-                            parameterId:
-                                it.parameterId ??
-                                it.ParameterId,
-
-                            parameterName:
-                                it.parameterName ??
-                                it.ParameterName,
-
-                            obisCode:
-                                it.obisCode ??
-                                it.ObisCode,
-
-                            value:
-                                it.value ??
-                                it.Value ??
-                                '',
-
-                            unit:
-                                it.unit ??
-                                it.Unit,
-
-                            error:
-                                it.error ??
-                                it.Error
-                        })
-                    )
-            };
-
-            return {
-                status: true,
-                data: normalized
-            };
-        }
-
-
-        // --------------------------------------------------------
-        // TIMEOUT
-        // --------------------------------------------------------
-
+        const result = data.data;
         return {
-            status: false,
-            error:
-                'Scan timed out — the meter did not respond within 5 minutes.'
+            status: true,
+            data: {
+                scannedAt: result.scannedAt,
+                deviceId: result.deviceId,
+                deviceName: result.deviceName,
+                items: (result.items ?? []).map((it: any) => ({
+                    parameterId: it.parameterId,
+                    parameterName: it.parameterName,
+                    obisCode: it.obisCode,
+                    value: it.value ?? '',
+                    unit: it.unit,
+                    error: it.error
+                }))
+            }
         };
-
     } catch (error: any) {
-
-        if (
-            error.response?.status ===
-            409
-        ) {
-            const msg =
-                error.response.data
-                    ?.errors?.[0] ||
-                'Device is currently syncing — please try scanning again in a moment';
-
+        if (error.response?.status === 409) {
             return {
                 status: false,
-                error: msg,
+                error: error.response.data?.errors?.[0] || 'Device is currently syncing — please try scanning again in a moment',
                 isConcurrencyError: true
             };
         }
-
-        const errMsg =
-            error.response?.data
-                ?.errors?.[0] ||
-            error.message ||
-            'Failed to scan device live readings.';
-
         return {
             status: false,
-            error: errMsg
+            error: error.response?.data?.errors?.[0] || error.message || 'Failed to scan device live readings.'
         };
     }
 };

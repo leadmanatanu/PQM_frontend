@@ -31,12 +31,12 @@ interface DeviceFiltersProps {
     profiles?: ProfileItem[];
     parameters?: any[];
     selectedDeviceId?: string | number;
-    selectedProfileId?: number | null;
+    selectedProfileIds?: number[];
     onDeviceSelect?: (id: string | number) => void;
-    onProfileSelect?: (profileId: number | null) => void;
+    onProfileSelect?: (profileIds: number[]) => void;
     onScan?: (scanParams: {
         deviceId: string | number | null;
-        profileId: number | null;
+        profileIds: number[];
         paramIds: (string | number)[];
     }) => void;
     isLoadingProfiles?: boolean;
@@ -49,7 +49,7 @@ export function DeviceFilters({
     profiles = [],
     parameters = [],
     selectedDeviceId = 0,
-    selectedProfileId = null,
+    selectedProfileIds = [],
     onDeviceSelect = () => { },
     onProfileSelect = () => { },
     onScan = () => { },
@@ -58,7 +58,7 @@ export function DeviceFilters({
     isScanning = false,
 }: DeviceFiltersProps): React.JSX.Element {
     const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
-    const [selectedProfile, setSelectedProfile] = useState<ProfileItem | null>(null);
+    const [selectedProfiles, setSelectedProfiles] = useState<ProfileItem[]>([]);
     const [selectedParams, setSelectedParams] = useState<any[]>([]);
 
     const [errors, setErrors] = useState({
@@ -75,15 +75,15 @@ export function DeviceFilters({
         }
     }, [selectedDeviceId, devices]);
 
-    // Sync internal selectedProfile with prop changes
+    // Sync internal selectedProfiles with prop changes
     useEffect(() => {
-        if (selectedProfileId && profiles.length > 0) {
-            const found = profiles.find(p => p.profileId === selectedProfileId);
-            if (found) setSelectedProfile(found);
-        } else if (!selectedProfileId) {
-            setSelectedProfile(null);
+        if (selectedProfileIds.length > 0 && profiles.length > 0) {
+            const found = profiles.filter(p => selectedProfileIds.includes(p.profileId));
+            setSelectedProfiles(found);
+        } else if (selectedProfileIds.length === 0) {
+            setSelectedProfiles([]);
         }
-    }, [selectedProfileId, profiles]);
+    }, [selectedProfileIds, profiles]);
 
     // Synchronize selected parameters with current parameters list
     useEffect(() => {
@@ -101,19 +101,19 @@ export function DeviceFilters({
         newValue: Device | null
     ) => {
         setSelectedDevice(newValue);
-        setSelectedProfile(null);
+        setSelectedProfiles([]);
         setSelectedParams([]);
         onDeviceSelect(newValue ? newValue.id : 0);
-        onProfileSelect(null);
+        onProfileSelect([]);
     };
 
     const handleProfileChange = (
         event: React.SyntheticEvent,
-        newValue: ProfileItem | null
+        newValue: ProfileItem[]
     ) => {
-        setSelectedProfile(newValue);
+        setSelectedProfiles(newValue);
         setSelectedParams([]);
-        onProfileSelect(newValue ? newValue.profileId : null);
+        onProfileSelect(newValue.map(p => p.profileId));
     };
 
     const handleScanClick = () => {
@@ -124,7 +124,7 @@ export function DeviceFilters({
 
         onScan({
             deviceId: selectedDevice ? selectedDevice.id : null,
-            profileId: selectedProfile ? selectedProfile.profileId : null,
+            profileIds: selectedProfiles.map(p => p.profileId),
             paramIds: selectedParams.map((p: any) => p.id),
         });
     };
@@ -169,33 +169,48 @@ export function DeviceFilters({
                         <FormControl fullWidth size="small">
                             <Autocomplete
                                 id="profile-filter-autocomplete"
+                                multiple
+                                disableCloseOnSelect
                                 options={profiles}
                                 size="small"
                                 disabled={!selectedDevice || isLoadingProfiles}
                                 getOptionLabel={(profile) => profile.friendlyName || profile.obisCode || ''}
-                                value={selectedProfile}
+                                value={selectedProfiles}
                                 onChange={handleProfileChange}
                                 isOptionEqualToValue={(option, value) => option.profileId === value.profileId}
-                                renderOption={(props, option) => (
+                                renderOption={(props, option, { selected }) => (
                                     <li {...props} key={option.profileId}>
-                                        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ width: '100%' }}>
-                                            <Typography variant="body2">{option.friendlyName}</Typography>
-                                            {/* <Chip
-                                                // label={option.category || 'TimeSeries'}
-                                                size="small"
-                                                variant="outlined"
-                                                color={option.category === 'Static' ? 'secondary' : 'primary'}
-                                                sx={{ fontSize: '0.7rem', height: '20px', ml: 1 }}
-                                            /> */}
-                                        </Stack>
+                                        <Checkbox
+                                            icon={icon}
+                                            checkedIcon={checkedIcon}
+                                            style={{ marginRight: 8 }}
+                                            checked={selected}
+                                        />
+                                        <Typography variant="body2">{option.friendlyName}</Typography>
                                     </li>
                                 )}
+                                renderTags={(tagValue, getTagProps) =>
+                                    tagValue.map((option, index) => {
+                                        const { key, ...chipProps } = getTagProps({ index });
+                                        return (
+                                            <Chip
+                                                key={key}
+                                                label={option.friendlyName}
+                                                size="small"
+                                                {...chipProps}
+                                                sx={{ fontSize: '0.75rem', height: '22px' }}
+                                            />
+                                        );
+                                    })
+                                }
                                 renderInput={(params) => (
                                     <TextField
                                         {...params}
                                         label={
                                             selectedDevice
-                                                ? "Select or type profile (optional - default all)"
+                                                ? selectedProfiles.length > 0
+                                                    ? `${selectedProfiles.length} profile${selectedProfiles.length > 1 ? 's' : ''} selected`
+                                                    : "Select profile(s) (optional - default all)"
                                                 : "Select a device first"
                                         }
                                         variant="outlined"
@@ -203,6 +218,8 @@ export function DeviceFilters({
                                     />
                                 )}
                                 openOnFocus
+                                limitTags={3}
+                                getLimitTagsText={(more) => `+${more} more`}
                             />
                         </FormControl>
                     </Grid>
