@@ -20,8 +20,6 @@ import type { Device } from '../../../components/dashboard/device/devices-table'
 
 import {
   deleteDevice,
-  disableDeviceSync,
-  enableDeviceSync,
   fetchDevices,
   syncDeviceNow
 } from '../../../api/device';
@@ -333,76 +331,6 @@ export default function Page(): React.JSX.Element {
 
   };
 
-
-  // ---------------------------------------------------------
-  // Toggle device active state
-  // ---------------------------------------------------------
-
-  const handleToggleActive = async (
-    deviceId: number,
-    newActiveState: boolean
-  ) => {
-
-    // Optimistic update
-
-    setDevices((prev) =>
-      prev.map((d) =>
-        d.id === deviceId
-          ? {
-              ...d,
-              isActive: newActiveState
-            }
-          : d
-      )
-    );
-
-
-    const success =
-      newActiveState
-        ? await enableDeviceSync(deviceId)
-        : await disableDeviceSync(deviceId);
-
-
-    if (success) {
-
-      setSnackbarMessage(
-        `Device ${deviceId} is now ${
-          newActiveState
-            ? 'Active'
-            : 'Inactive'
-        }.`
-      );
-
-      setSnackbarSeverity('success');
-      setSnackbarOpen(true);
-
-    } else {
-
-      // Revert optimistic update
-
-      setDevices((prev) =>
-        prev.map((d) =>
-          d.id === deviceId
-            ? {
-                ...d,
-                isActive: !newActiveState
-              }
-            : d
-        )
-      );
-
-      setSnackbarMessage(
-        `Failed to update active state for device ${deviceId}.`
-      );
-
-      setSnackbarSeverity('error');
-      setSnackbarOpen(true);
-
-    }
-
-  };
-
-
   // ---------------------------------------------------------
   // Snackbar
   // ---------------------------------------------------------
@@ -568,7 +496,6 @@ export default function Page(): React.JSX.Element {
           onEdit={handleEdit}
           onDelete={handleDelete}
           onSyncNow={handleSyncNow}
-          onToggleActive={handleToggleActive}
           syncingDeviceIds={syncingDeviceIds}
         />
 

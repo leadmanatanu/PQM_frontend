@@ -1,7 +1,7 @@
 import axios from 'axios';
-import type { User } from '@/types/user';
+import type { User } from '../../types/user';
 
-const API_URL = 'http://localhost:5135/api/user';
+const API_URL = 'http://localhost:5135/api/auth';
 
 export interface SignUpParams {
   firstName: string;

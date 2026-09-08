@@ -817,9 +817,7 @@ export function AddDeviceForm({
                             <FormControl
                                 fullWidth
                                 size="small"
-                                error={
-                                    !!errors.meterType
-                                }
+                                error={!!errors.meterType}
                             >
                                 <InputLabel id="metertype-label">
                                     Meter Type
@@ -829,38 +827,19 @@ export function AddDeviceForm({
                                     labelId="metertype-label"
                                     id="metertype"
                                     name="metertype"
-                                    value={
-                                        selectedMeterTypeId ??
-                                        0
-                                    }
+                                    value={selectedMeterTypeId ?? ""}
                                     label="Meter Type"
-                                    onChange={
-                                        handleMeterTypeChange
-                                    }
+                                    onChange={handleMeterTypeChange}
+                                    displayEmpty
                                 >
-                                    <MenuItem value={0}>
-                                        <em>
-                                            Select Meter Type
-                                        </em>
-                                    </MenuItem>
-
-                                    {meterTypes.map(
-                                        type => (
-                                            <MenuItem
-                                                key={type.id}
-                                                value={type.id}
-                                            >
-                                                {type.name}
-                                            </MenuItem>
-                                        )
-                                    )}
-
-                                    {meterTypes.length ===
-                                        0 && (
-                                        <MenuItem disabled>
-                                            No meter types available
+                                    {meterTypes.map((type) => (
+                                        <MenuItem
+                                            key={type.id}
+                                            value={type.id}
+                                        >
+                                            {type.name}
                                         </MenuItem>
-                                    )}
+                                    ))}
                                 </Select>
 
                                 {errors.meterType && (
@@ -941,59 +920,23 @@ export function AddDeviceForm({
                                 <Select
                                     labelId="schedule-label"
                                     id="schedule"
-                                    value={
-                                        selectedScheduleId ??
-                                        0
-                                    }
-                                    onChange={
-                                        handleScheduleChange
-                                    }
+                                    value={selectedScheduleId ?? ""}
+                                    onChange={handleScheduleChange}
+                                    displayEmpty
                                     input={
                                         <OutlinedInput label="Schedule" />
                                     }
                                 >
-                                    <MenuItem value={0}>
-                                        <em>
-                                            No Schedule
-                                        </em>
-                                    </MenuItem>
-
                                     {schedules
-                                        .filter(
-                                            schedule =>
-                                                schedule.isEnabled
-                                        )
-                                        .map(
-                                            schedule => (
-                                                <MenuItem
-                                                    key={
-                                                        schedule.id
-                                                    }
-                                                    value={
-                                                        schedule.id
-                                                    }
-                                                >
-                                                    {
-                                                        schedule.scheduledTime
-                                                    }{' '}
-                                                    -{' '}
-                                                    {
-                                                        schedule.repeatMode
-                                                    }
-                                                </MenuItem>
-                                            )
-                                        )}
-
-                                    {schedules.filter(
-                                        schedule =>
-                                            schedule.isEnabled
-                                    ).length ===
-                                        0 && (
-                                        <MenuItem disabled>
-                                            No enabled schedules
-                                            available
-                                        </MenuItem>
-                                    )}
+                                        .filter(schedule => schedule.isEnabled)
+                                        .map(schedule => (
+                                            <MenuItem
+                                                key={schedule.id}
+                                                value={schedule.id}
+                                            >
+                                                {schedule.scheduledTime} - {schedule.repeatMode}
+                                            </MenuItem>
+                                        ))}
                                 </Select>
                             </FormControl>
                         </Grid>

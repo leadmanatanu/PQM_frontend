@@ -242,56 +242,6 @@ export const syncDeviceNow = async (
 };
 
 // ============================================================
-// ENABLE DEVICE SYNC
-// ============================================================
-
-export const enableDeviceSync = async (
-    deviceId: string | number
-): Promise<boolean> => {
-    try {
-        const { data } =
-            await apiClient.post(
-                `/device/${deviceId}/enable-sync`
-            );
-
-        return data?.status ?? true;
-    } catch (error) {
-        console.error(
-            'Error enabling device sync:',
-            error
-        );
-
-        return false;
-    }
-};
-
-
-// ============================================================
-// DISABLE DEVICE SYNC
-// ============================================================
-
-export const disableDeviceSync = async (
-    deviceId: string | number
-): Promise<boolean> => {
-    try {
-        const { data } =
-            await apiClient.post(
-                `/device/${deviceId}/disable-sync`
-            );
-
-        return data?.status ?? true;
-    } catch (error) {
-        console.error(
-            'Error disabling device sync:',
-            error
-        );
-
-        return false;
-    }
-};
-
-
-// ============================================================
 // DISCOVER DEVICE PARAMETERS
 // ============================================================
 
@@ -435,7 +385,6 @@ export const writeDLMSObjectAttribute = async (
         return null;
     }
 };
-
 
 // ============================================================
 // FETCH DEVICE CONFIGURATION
