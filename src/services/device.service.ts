@@ -54,7 +54,7 @@ export const addDevice = async (
 
             IP: device.ip,
 
-            PORT: Number(device.PORT),
+            PORT: Number(device.port),
 
 
             SerialNumber: device.serialNumber,
@@ -122,7 +122,7 @@ export const editDevice = async (
 
             IP: device.ip,
 
-            PORT: device.PORT ?? 0,
+            PORT: device.port,
 
             SerialNumber: device.serialNumber,
             ConsumerNumber: device.consumerNumber,

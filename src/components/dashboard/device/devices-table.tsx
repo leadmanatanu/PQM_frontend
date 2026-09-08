@@ -33,7 +33,7 @@ export interface Device {
 
     ip: string;
 
-    PORT: number;
+    port : number;
 
     isActive: boolean | string;
 

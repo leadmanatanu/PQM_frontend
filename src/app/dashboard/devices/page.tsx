@@ -177,8 +177,7 @@ export default function Page(): React.JSX.Element {
       (devices ?? []).find(
         (d) => d.id === deviceId
       ) || null;
-
-    setIsVisible(false);
+          setIsVisible(false);
 
     setEditingDevice(device);
 

@@ -116,13 +116,8 @@ export function AddDeviceForm({
             setTxtIP(editingDevice.ip || '');
             setTxtConsumerNo(editingDevice.consumerNumber || '');
             setTxtSerialNo(editingDevice.serialNumber || '');
-
-           setTxtPort(
-    editingDevice.PORT !== undefined &&
-        editingDevice.PORT !== null
-        ? String(editingDevice.PORT)
-        : ''
-);
+            setTxtPort(editingDevice.port !== undefined && editingDevice.port !== null? 
+                String(editingDevice.port): '');
 
             setSelectedValue(
                 editingDevice.isActive ? '1' : '0'
@@ -531,8 +526,8 @@ export function AddDeviceForm({
             id: editingDevice?.id || 0,
             name: txtName,
             isActive: selectedValue,
-            ip: txtIP,
-            PORT: Number(txtPort),
+            ip: txtIP, 
+            port: Number(txtPort),
             consumerNumber: txtConsumerNo,
             serialNumber: txtSerialNo,
             clientAddress: Number(txtClientAddress),
@@ -667,576 +662,516 @@ export function AddDeviceForm({
                             </Typography>
                         </Grid>
 
+                        {/* DEVICE NAME */}
+<Grid
+    size={{
+        xs: 12,
+        md: 6
+    }}
+>
+    <FormControl
+        fullWidth
+        size="small"
+        error={!!errors.name}
+    >
+        <InputLabel>
+            Device Name
+        </InputLabel>
+
+        <OutlinedInput
+            label="Device Name"
+            value={txtName}
+            onChange={handleNameChange}
+        />
+
+        {errors.name && (
+            <FormHelperText>
+                {errors.name}
+            </FormHelperText>
+        )}
+    </FormControl>
+</Grid>
+
+{/* SERIAL NUMBER */}
                         <Grid
-                            size={{
-                                xs: 12,
-                                md: 6
-                            }}
-                        >
-                            <FormControl
-                                fullWidth
-                                size="small"
-                                error={!!errors.name}
-                            >
-                                <InputLabel>
-                                    Device Name
-                                </InputLabel>
+    size={{
+        xs: 12,
+        md: 6
+    }}
+>
+    <FormControl
+        fullWidth
+        size="small"
+        error={!!errors.serialNo}
+    >
+        <InputLabel>
+            Serial Number
+        </InputLabel>
 
-                                <OutlinedInput
-                                    label="Device Name"
-                                    value={txtName}
-                                    onChange={
-                                        handleNameChange
-                                    }
-                                />
+        <OutlinedInput
+            label="Serial Number"
+            value={txtSerialNo}
+            onChange={handleSerChange}
+        />
 
-                                {errors.name && (
-                                    <FormHelperText>
-                                        {errors.name}
-                                    </FormHelperText>
-                                )}
-                            </FormControl>
-                        </Grid>
+        {errors.serialNo && (
+            <FormHelperText>
+                {errors.serialNo}
+            </FormHelperText>
+        )}
+    </FormControl>
+</Grid>
 
-                        <Grid
-                            size={{
-                                xs: 12,
-                                md: 6
-                            }}
-                        >
-                            <FormControl
-                                fullWidth
-                                size="small"
-                                error={
-                                    !!errors.serialNo
-                                }
-                            >
-                                <InputLabel>
-                                    Serial Number
-                                </InputLabel>
+{/* CONSUMER NUMBER */}
+<Grid
+    size={{
+        xs: 12,
+        md: 6
+    }}
+>
+    <FormControl
+        fullWidth
+        size="small"
+        error={!!errors.consumerNo}
+    >
+        <InputLabel>
+            Consumer Number
+        </InputLabel>
 
-                                <OutlinedInput
-                                    label="Serial Number"
-                                    value={txtSerialNo}
-                                    onChange={
-                                        handleSerChange
-                                    }
-                                />
+        <OutlinedInput
+            label="Consumer Number"
+            name="consumerNo"
+            type="text"
+            value={txtConsumerNo}
+            onChange={handleConChange}
+        />
 
-                                {errors.serialNo && (
-                                    <FormHelperText>
-                                        {errors.serialNo}
-                                    </FormHelperText>
-                                )}
-                            </FormControl>
-                        </Grid>
+        {errors.consumerNo && (
+            <FormHelperText>
+                {errors.consumerNo}
+            </FormHelperText>
+        )}
+    </FormControl>
+</Grid>
 
-                        <Grid
-                            size={{
-                                xs: 12,
-                                md: 6
-                            }}
-                        >
-                            <FormControl
-                                fullWidth
-                                size="small"
-                                error={
-                                    !!errors.consumerNo
-                                }
-                            >
-                                <InputLabel>
-                                    Consumer Number
-                                </InputLabel>
+{/* STATUS */}
+<Grid
+    size={{
+        xs: 12,
+        md: 6
+    }}
+>
+    <FormControl
+        fullWidth
+        size="small"
+    >
+        <InputLabel id="isactive-label">
+            Status
+        </InputLabel>
 
-                                <OutlinedInput
-                                    label="Consumer Number"
-                                    name="consumerNo"
-                                    type="text"
-                                    value={
-                                        txtConsumerNo
-                                    }
-                                    onChange={
-                                        handleConChange
-                                    }
-                                />
+        <Select
+            labelId="isactive-label"
+            id="isactive"
+            name="isactive"
+            value={selectedValue}
+            label="Status"
+            onChange={handleChange}
+        >
+            <MenuItem value="1">
+                Active
+            </MenuItem>
 
-                                {errors.consumerNo && (
-                                    <FormHelperText>
-                                        {
-                                            errors.consumerNo
-                                        }
-                                    </FormHelperText>
-                                )}
-                            </FormControl>
-                        </Grid>
+            <MenuItem value="0">
+                Inactive
+            </MenuItem>
+        </Select>
+    </FormControl>
+</Grid>
 
-                        <Grid
-                            size={{
-                                xs: 12,
-                                md: 6
-                            }}
-                        >
-                            <FormControl
-                                fullWidth
-                                size="small"
-                            >
-                                <InputLabel id="isactive-label">
-                                    Status
-                                </InputLabel>
+{/* METER TYPE */}
+<Grid
+    size={{
+        xs: 12,
+        md: 6
+    }}
+>
+    <FormControl
+        fullWidth
+        size="small"
+        error={!!errors.meterType}
+    >
+        <InputLabel id="metertype-label">
+            Meter Type
+        </InputLabel>
 
-                                <Select
-                                    labelId="isactive-label"
-                                    id="isactive"
-                                    name="isactive"
-                                    value={
-                                        selectedValue
-                                    }
-                                    label="Status"
-                                    onChange={
-                                        handleChange
-                                    }
-                                >
-                                    <MenuItem value="1">
-                                        Active
-                                    </MenuItem>
+        <Select
+            labelId="metertype-label"
+            id="metertype"
+            name="metertype"
+            value={selectedMeterTypeId ?? ""}
+            label="Meter Type"
+            onChange={handleMeterTypeChange}
+            displayEmpty
+        >
+            {meterTypes.map(type => (
+                <MenuItem
+                    key={type.id}
+                    value={type.id}
+                >
+                    {type.name}
+                </MenuItem>
+            ))}
+        </Select>
 
-                                    <MenuItem value="0">
-                                        Inactive
-                                    </MenuItem>
-                                </Select>
-                            </FormControl>
-                        </Grid>
+        {errors.meterType && (
+            <FormHelperText>
+                {errors.meterType}
+            </FormHelperText>
+        )}
+    </FormControl>
+</Grid>
 
-                        {/* METER TYPE */}
-                        <Grid
-                            size={{
-                                xs: 12,
-                                md: 6
-                            }}
-                        >
-                            <FormControl
-                                fullWidth
-                                size="small"
-                                error={!!errors.meterType}
-                            >
-                                <InputLabel id="metertype-label">
-                                    Meter Type
-                                </InputLabel>
+{/* TIME ZONE */}
+<Grid
+    size={{
+        xs: 12,
+        md: 6
+    }}
+>
+    <FormControl
+        fullWidth
+        size="small"
+    >
+        <InputLabel id="timezone-label">
+            Time Zone
+        </InputLabel>
 
-                                <Select
-                                    labelId="metertype-label"
-                                    id="metertype"
-                                    name="metertype"
-                                    value={selectedMeterTypeId ?? ""}
-                                    label="Meter Type"
-                                    onChange={handleMeterTypeChange}
-                                    displayEmpty
-                                >
-                                    {meterTypes.map((type) => (
-                                        <MenuItem
-                                            key={type.id}
-                                            value={type.id}
-                                        >
-                                            {type.name}
-                                        </MenuItem>
-                                    ))}
-                                </Select>
+        <Select
+            labelId="timezone-label"
+            id="timezone"
+            name="timezone"
+            value={txtTimeZoneId}
+            label="Time Zone"
+            onChange={e =>
+                setTxtTimeZoneId(e.target.value)
+            }
+        >
+            <MenuItem value="India Standard Time">
+                India Standard Time (IST)
+            </MenuItem>
 
-                                {errors.meterType && (
-                                    <FormHelperText>
-                                        {errors.meterType}
-                                    </FormHelperText>
-                                )}
-                            </FormControl>
-                        </Grid>
+            <MenuItem value="UTC">
+                Coordinated Universal Time (UTC)
+            </MenuItem>
 
-                        {/* TIME ZONE */}
-                        <Grid
-                            size={{
-                                xs: 12,
-                                md: 6
-                            }}
-                        >
-                            <FormControl
-                                fullWidth
-                                size="small"
-                            >
-                                <InputLabel id="timezone-label">
-                                    Time Zone
-                                </InputLabel>
+            <MenuItem value="EST Standard Time">
+                Eastern Standard Time (EST)
+            </MenuItem>
 
-                                <Select
-                                    labelId="timezone-label"
-                                    id="timezone"
-                                    name="timezone"
-                                    value={
-                                        txtTimeZoneId
-                                    }
-                                    label="Time Zone"
-                                    onChange={e =>
-                                        setTxtTimeZoneId(
-                                            e.target.value
-                                        )
-                                    }
-                                >
-                                    <MenuItem value="India Standard Time">
-                                        India Standard Time
-                                        (IST)
-                                    </MenuItem>
+            <MenuItem value="SE Asia Standard Time">
+                SE Asia Standard Time (ICT)
+            </MenuItem>
+        </Select>
+    </FormControl>
+</Grid>
 
-                                    <MenuItem value="UTC">
-                                        Coordinated Universal
-                                        Time (UTC)
-                                    </MenuItem>
+{/* SCHEDULE */}
+<Grid
+    size={{
+        xs: 12,
+        md: 6
+    }}
+>
+    <FormControl
+        fullWidth
+        size="small"
+    >
+        <InputLabel id="schedule-label">
+            Schedule
+        </InputLabel>
 
-                                    <MenuItem value="EST Standard Time">
-                                        Eastern Standard
-                                        Time (EST)
-                                    </MenuItem>
+        <Select
+            labelId="schedule-label"
+            id="schedule"
+            name="schedule"
+            value={selectedScheduleId ?? ""}
+            label="Schedule"
+            onChange={handleScheduleChange}
+            displayEmpty
+        >
+            {schedules
+                .filter(schedule => schedule.isEnabled)
+                .map(schedule => (
+                    <MenuItem
+                        key={schedule.id}
+                        value={schedule.id}
+                    >
+                        {schedule.scheduledTime} -{" "}
+                        {schedule.repeatMode}
+                    </MenuItem>
+                ))}
+        </Select>
+    </FormControl>
+</Grid>
 
-                                    <MenuItem value="SE Asia Standard Time">
-                                        SE Asia Standard
-                                        Time (ICT)
-                                    </MenuItem>
-                                </Select>
-                            </FormControl>
-                        </Grid>
+{/* CONNECTION SETTINGS */}
+<Grid size={12}>
+    <Typography
+        variant="subtitle2"
+        sx={{
+            fontWeight: 600,
+            color: 'text.primary',
+            mt: 0.5,
+            mb: 0.25
+        }}
+    >
+        Connection Settings
+    </Typography>
+</Grid>
 
-                        {/* SINGLE SCHEDULE DROPDOWN */}
-                        <Grid
-                            size={{
-                                xs: 12,
-                                md: 6
-                            }}
-                        >
-                            <FormControl
-                                fullWidth
-                                size="small"
-                            >
-                                <InputLabel id="schedule-label">
-                                    Schedule
-                                </InputLabel>
+{/* IP */}
+<Grid
+    size={{
+        xs: 12,
+        md: 6
+    }}
+>
+    <FormControl
+        fullWidth
+        size="small"
+        error={!!errors.ip}
+    >
+        <InputLabel>
+            IP Address
+        </InputLabel>
 
-                                <Select
-                                    labelId="schedule-label"
-                                    id="schedule"
-                                    value={selectedScheduleId ?? ""}
-                                    onChange={handleScheduleChange}
-                                    displayEmpty
-                                    input={
-                                        <OutlinedInput label="Schedule" />
-                                    }
-                                >
-                                    {schedules
-                                        .filter(schedule => schedule.isEnabled)
-                                        .map(schedule => (
-                                            <MenuItem
-                                                key={schedule.id}
-                                                value={schedule.id}
-                                            >
-                                                {schedule.scheduledTime} - {schedule.repeatMode}
-                                            </MenuItem>
-                                        ))}
-                                </Select>
-                            </FormControl>
-                        </Grid>
+        <OutlinedInput
+            label="IP Address"
+            name="ip"
+            type="text"
+            value={txtIP}
+            onChange={handleIPChange}
+        />
 
-                        <Grid size={12}>
-                            <Typography
-                                variant="subtitle2"
-                                sx={{
-                                    fontWeight: 600,
-                                    color: 'text.primary',
-                                    mt: 0.5,
-                                    mb: 0.25
-                                }}
-                            >
-                                Connection Settings
-                            </Typography>
-                        </Grid>
+        {errors.ip && (
+            <FormHelperText>
+                {errors.ip}
+            </FormHelperText>
+        )}
+    </FormControl>
+</Grid>
 
-                        {/* IP */}
-                        <Grid
-                            size={{
-                                xs: 12,
-                                md: 6
-                            }}
-                        >
-                            <FormControl
-                                fullWidth
-                                size="small"
-                                error={!!errors.ip}
-                            >
-                                <InputLabel>
-                                    IP Address
-                                </InputLabel>
+{/* PORT */}
+<Grid
+    size={{
+        xs: 12,
+        md: 6
+    }}
+>
+    <FormControl
+        fullWidth
+        size="small"
+        error={!!errors.port}
+    >
+        <InputLabel>
+            Port
+        </InputLabel>
 
-                                <OutlinedInput
-                                    label="IP Address"
-                                    name="ip"
-                                    type="text"
-                                    value={txtIP}
-                                    onChange={
-                                        handleIPChange
-                                    }
-                                />
+        <OutlinedInput
+            label="Port"
+            name="port"
+            type="text"
+            value={txtPort}//1234
+            onChange={handlePortChange}
+        />
 
-                                {errors.ip && (
-                                    <FormHelperText>
-                                        {errors.ip}
-                                    </FormHelperText>
-                                )}
-                            </FormControl>
-                        </Grid>
+        {errors.port && (
+            <FormHelperText>
+                {errors.port}
+            </FormHelperText>
+        )}
+    </FormControl>
+</Grid>
 
-                        {/* PORT */}
-                        <Grid
-                            size={{
-                                xs: 12,
-                                md: 6
-                            }}
-                        >
-                            <FormControl
-                                fullWidth
-                                size="small"
-                                error={!!errors.port}
-                            >
-                                <InputLabel>
-                                    Port
-                                </InputLabel>
+{/* CLIENT ADDRESS */}
+<Grid
+    size={{
+        xs: 12,
+        md: 6
+    }}
+>
+    <FormControl
+        fullWidth
+        size="small"
+        error={!!errors.clientAddress}
+    >
+        <InputLabel>
+            Client Address
+        </InputLabel>
 
-                                <OutlinedInput
-                                    label="Port"
-                                    name="port"
-                                    type="text"
-                                    value={txtPort}
-                                    onChange={
-                                        handlePortChange
-                                    }
-                                />
+        <OutlinedInput
+            label="Client Address"
+            name="clientAddress"
+            type="number"
+            value={txtClientAddress}
+            onChange={handleClientAddressChange}
+        />
 
-                                {errors.port && (
-                                    <FormHelperText>
-                                        {errors.port}
-                                    </FormHelperText>
-                                )}
-                            </FormControl>
-                        </Grid>
+        {errors.clientAddress && (
+            <FormHelperText>
+                {errors.clientAddress}
+            </FormHelperText>
+        )}
+    </FormControl>
+</Grid>
 
-                        {/* CLIENT ADDRESS */}
-                        <Grid
-                            size={{
-                                xs: 12,
-                                md: 6
-                            }}
-                        >
-                            <FormControl
-                                fullWidth
-                                size="small"
-                                error={
-                                    !!errors.clientAddress
-                                }
-                            >
-                                <InputLabel>
-                                    Client Address
-                                </InputLabel>
+{/* SERVER ADDRESS */}
+<Grid
+    size={{
+        xs: 12,
+        md: 6
+    }}
+>
+    <FormControl
+        fullWidth
+        size="small"
+        error={!!errors.serverAddress}
+    >
+        <InputLabel>
+            Server Address
+        </InputLabel>
 
-                                <OutlinedInput
-                                    label="Client Address"
-                                    name="clientAddress"
-                                    type="number"
-                                    value={
-                                        txtClientAddress
-                                    }
-                                    onChange={
-                                        handleClientAddressChange
-                                    }
-                                />
+        <OutlinedInput
+            label="Server Address"
+            name="serverAddress"
+            type="number"
+            value={txtServerAddress}
+            onChange={handleServerAddressChange}
+        />
 
-                                {errors.clientAddress && (
-                                    <FormHelperText>
-                                        {
-                                            errors.clientAddress
-                                        }
-                                    </FormHelperText>
-                                )}
-                            </FormControl>
-                        </Grid>
+        {errors.serverAddress && (
+            <FormHelperText>
+                {errors.serverAddress}
+            </FormHelperText>
+        )}
+    </FormControl>
+</Grid>
 
-                        {/* SERVER ADDRESS */}
-                        <Grid
-                            size={{
-                                xs: 12,
-                                md: 6
-                            }}
-                        >
-                            <FormControl
-                                fullWidth
-                                size="small"
-                                error={
-                                    !!errors.serverAddress
-                                }
-                            >
-                                <InputLabel>
-                                    Server Address
-                                </InputLabel>
+{/* AUTHENTICATION */}
+<Grid
+    size={{
+        xs: 12,
+        md: 6
+    }}
+>
+    <FormControl
+        fullWidth
+        size="small"
+    >
+        <InputLabel id="auth-label">
+            Authentication
+        </InputLabel>
 
-                                <OutlinedInput
-                                    label="Server Address"
-                                    name="serverAddress"
-                                    type="number"
-                                    value={
-                                        txtServerAddress
-                                    }
-                                    onChange={
-                                        handleServerAddressChange
-                                    }
-                                />
+        <Select
+            labelId="auth-label"
+            id="authentication"
+            name="authentication"
+            value={txtAuthentication}
+            label="Authentication"
+            onChange={handleAuthenticationChange}
+        >
+            <MenuItem value="None">
+                None
+            </MenuItem>
 
-                                {errors.serverAddress && (
-                                    <FormHelperText>
-                                        {
-                                            errors.serverAddress
-                                        }
-                                    </FormHelperText>
-                                )}
-                            </FormControl>
-                        </Grid>
+            <MenuItem value="Low">
+                Low (Password)
+            </MenuItem>
 
-                        {/* AUTHENTICATION */}
-                        <Grid
-                            size={{
-                                xs: 12,
-                                md: 6
-                            }}
-                        >
-                            <FormControl
-                                fullWidth
-                                size="small"
-                            >
-                                <InputLabel id="auth-label">
-                                    Authentication
-                                </InputLabel>
+            <MenuItem value="High">
+                High (HLS)
+            </MenuItem>
 
-                                <Select
-                                    labelId="auth-label"
-                                    id="authentication"
-                                    name="authentication"
-                                    value={
-                                        txtAuthentication
-                                    }
-                                    label="Authentication"
-                                    onChange={
-                                        handleAuthenticationChange
-                                    }
-                                >
-                                    <MenuItem value="None">
-                                        None
-                                    </MenuItem>
+            <MenuItem value="HighGmac">
+                High GMAC
+            </MenuItem>
 
-                                    <MenuItem value="Low">
-                                        Low (Password)
-                                    </MenuItem>
+            <MenuItem value="HighSha256">
+                High SHA-256
+            </MenuItem>
 
-                                    <MenuItem value="High">
-                                        High (HLS)
-                                    </MenuItem>
+            <MenuItem value="HighEcdsa">
+                High ECDSA
+            </MenuItem>
+        </Select>
+    </FormControl>
+</Grid>
 
-                                    <MenuItem value="HighGmac">
-                                        High GMAC
-                                    </MenuItem>
+{/* PASSWORD */}
+{txtAuthentication !== 'None' && (
+    <Grid
+        size={{
+            xs: 12,
+            md: 6
+        }}
+    >
+        <FormControl
+            fullWidth
+            size="small"
+            error={!!errors.password}
+        >
+            <InputLabel>
+                Password
+            </InputLabel>
 
-                                    <MenuItem value="HighSha256">
-                                        High SHA-256
-                                    </MenuItem>
+            <OutlinedInput
+                label="Password"
+                name="password"
+                type="password"
+                value={txtPassword}
+                onChange={handlePasswordChange}
+            />
 
-                                    <MenuItem value="HighEcdsa">
-                                        High ECDSA
-                                    </MenuItem>
-                                </Select>
-                            </FormControl>
-                        </Grid>
+            {errors.password && (
+                <FormHelperText>
+                    {errors.password}
+                </FormHelperText>
+            )}
+        </FormControl>
+    </Grid>
+)}
 
-                        {/* PASSWORD */}
-                        {txtAuthentication !==
-                            'None' && (
-                            <Grid
-                                size={{
-                                    xs: 12,
-                                    md: 6
-                                }}
-                            >
-                                <FormControl
-                                    fullWidth
-                                    size="small"
-                                    error={
-                                        !!errors.password
-                                    }
-                                >
-                                    <InputLabel>
-                                        Password
-                                    </InputLabel>
+{/* TIMEOUT */}
+<Grid
+    size={{
+        xs: 12,
+        md: 6
+    }}
+>
+    <FormControl
+        fullWidth
+        size="small"
+        error={!!errors.timeout}
+    >
+        <InputLabel>
+            Timeout (ms)
+        </InputLabel>
 
-                                    <OutlinedInput
-                                        label="Password"
-                                        name="password"
-                                        type="password"
-                                        value={
-                                            txtPassword
-                                        }
-                                        onChange={
-                                            handlePasswordChange
-                                        }
-                                    />
+        <OutlinedInput
+            label="Timeout (ms)"
+            name="timeout"
+            type="number"
+            value={txtTimeout}
+            onChange={handleTimeoutChange}
+        />
 
-                                    {errors.password && (
-                                        <FormHelperText>
-                                            {
-                                                errors.password
-                                            }
-                                        </FormHelperText>
-                                    )}
-                                </FormControl>
-                            </Grid>
-                        )}
-
-                        {/* TIMEOUT */}
-                        <Grid
-                            size={{
-                                xs: 12,
-                                md: 6
-                            }}
-                        >
-                            <FormControl
-                                fullWidth
-                                size="small"
-                                error={
-                                    !!errors.timeout
-                                }
-                            >
-                                <InputLabel>
-                                    Timeout (ms)
-                                </InputLabel>
-
-                                <OutlinedInput
-                                    label="Timeout (ms)"
-                                    name="timeout"
-                                    type="number"
-                                    value={
-                                        txtTimeout
-                                    }
-                                    onChange={
-                                        handleTimeoutChange
-                                    }
-                                />
-
-                                {errors.timeout && (
-                                    <FormHelperText>
-                                        {errors.timeout}
-                                    </FormHelperText>
-                                )}
-                            </FormControl>
-                        </Grid>
+        {errors.timeout && (
+            <FormHelperText>
+                {errors.timeout}
+            </FormHelperText>
+        )}
+        </FormControl>
+    </Grid>
 
                         {/* GENERAL ERROR */}
                         {errors.general && (
