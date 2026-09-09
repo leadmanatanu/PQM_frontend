@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react';
-import { HubConnection, HubConnectionBuilder, HubConnectionState, LogLevel } from '@microsoft/signalr';
+import { useEffect, useState } from "react";
+import { HubConnection, HubConnectionBuilder, HubConnectionState, LogLevel } from "@microsoft/signalr";
+import { apiClient } from "../services/api-client";
 
 export interface DeviceStatusUpdate {
-  deviceId: number;
-  status: string; // Online, Offline, Error, Syncing
-  lastSync?: string;
-  lastError?: string;
+	deviceId: number;
+	status: string; // Online, Offline, Error, Syncing
+	lastSync?: string;
+	lastError?: string;
 }
 
 // Singleton state and connection variables shared by all hooks
@@ -15,78 +16,85 @@ const listeners = new Set<(update: DeviceStatusUpdate) => void>();
 let globalStatuses: Record<number, { status: string; lastSync?: string; lastError?: string }> = {};
 
 function startGlobalConnection() {
-  if (!globalConnection) {
-    const apiBase = import.meta.env.VITE_API_URL ?? 'http://localhost:5135';
-    const HUB_URL = `${apiBase}/hubs/device`;
+	if (!globalConnection) {
+		
+		const apiBase = apiClient.defaults.baseURL;
+		if (!apiBase) {
+			throw new Error("API base URL is not configured");
+		}
 
-    globalConnection = new HubConnectionBuilder()
-      .withUrl(HUB_URL)
-      .withAutomaticReconnect()
-      .configureLogging(LogLevel.Warning)
-      .build();
+		// Remove /api from the API URL
+		const serverUrl = apiBase.replace(/\/api\/?$/, "");
+		const HUB_URL = `${serverUrl}/hubs/device`;
 
-    globalConnection.on('DeviceStatusChanged', (update: any) => {
-      const deviceId = update.deviceId ?? update.DeviceId;
-      const status = update.status ?? update.Status;
-      const lastSync = update.lastSync ?? update.LastSync;
-      const lastError = update.lastError ?? update.LastError;
+		globalConnection = new HubConnectionBuilder()
+			.withUrl(HUB_URL)
+			.withAutomaticReconnect()
+			.configureLogging(LogLevel.Warning)
+			.build();
 
-      if (deviceId === undefined || deviceId === null) return;
+		globalConnection.on("DeviceStatusChanged", (update: any) => {
+			const deviceId = update.deviceId ?? update.DeviceId;
+			const status = update.status ?? update.Status;
+			const lastSync = update.lastSync ?? update.LastSync;
+			const lastError = update.lastError ?? update.LastError;
 
-      const normalizedUpdate: DeviceStatusUpdate = {
-        deviceId,
-        status: status ?? 'Offline',
-        lastSync,
-        lastError,
-      };
+			if (deviceId === undefined || deviceId === null) return;
 
-      globalStatuses = {
-        ...globalStatuses,
-        [normalizedUpdate.deviceId]: {
-          status: normalizedUpdate.status,
-          lastSync: normalizedUpdate.lastSync,
-          lastError: normalizedUpdate.lastError,
-        },
-      };
+			const normalizedUpdate: DeviceStatusUpdate = {
+				deviceId,
+				status: status ?? "Offline",
+				lastSync,
+				lastError,
+			};
 
-      listeners.forEach((listener) => listener(normalizedUpdate));
-    });
-  }
+			globalStatuses = {
+				...globalStatuses,
+				[normalizedUpdate.deviceId]: {
+					status: normalizedUpdate.status,
+					lastSync: normalizedUpdate.lastSync,
+					lastError: normalizedUpdate.lastError,
+				},
+			};
 
-  if (globalConnection.state === HubConnectionState.Disconnected && !isStarting) {
-    isStarting = true;
-    globalConnection
-      .start()
-      .then(() => {
-        isStarting = false;
-      })
-      .catch((err) => {
-        isStarting = false;
-        console.error('SignalR: Error establishing connection to DeviceHub:', err);
-      });
-  }
+			listeners.forEach((listener) => listener(normalizedUpdate));
+		});
+	}
+
+	if (globalConnection.state === HubConnectionState.Disconnected && !isStarting) {
+		isStarting = true;
+		globalConnection
+			.start()
+			.then(() => {
+				isStarting = false;
+			})
+			.catch((err) => {
+				isStarting = false;
+				console.error("SignalR: Error establishing connection to DeviceHub:", err);
+			});
+	}
 }
 
 export function useDeviceStatus() {
-  const [statuses, setStatuses] = useState<Record<number, { status: string; lastSync?: string; lastError?: string }>>(globalStatuses);
+	const [statuses, setStatuses] =
+		useState<Record<number, { status: string; lastSync?: string; lastError?: string }>>(globalStatuses);
 
-  useEffect(() => {
-    startGlobalConnection();
+	useEffect(() => {
+		startGlobalConnection();
 
-    // Sync state on mount
-    setStatuses(globalStatuses);
+		// Sync state on mount
+		setStatuses(globalStatuses);
 
-    const listener = () => {
-      setStatuses({ ...globalStatuses });
-    };
+		const listener = () => {
+			setStatuses({ ...globalStatuses });
+		};
 
-    listeners.add(listener);
+		listeners.add(listener);
 
-    return () => {
-      listeners.delete(listener);
-    };
-  }, []);
+		return () => {
+			listeners.delete(listener);
+		};
+	}, []);
 
-  return statuses;
+	return statuses;
 }
-
