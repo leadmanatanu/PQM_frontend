@@ -1,7 +1,7 @@
 import { apiClient } from "./api-client";
 
 export interface ProfileItem {
-	profileId: number;
+	id: number;
 	friendlyName: string;
 	obisCode: string;
 	category: string;
