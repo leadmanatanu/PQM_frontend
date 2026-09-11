@@ -1,71 +1,122 @@
-//signalR services
-// SignalR connection + subscribe/unsubscribe
-
 import { HubConnection, HubConnectionBuilder, HubConnectionState, LogLevel } from "@microsoft/signalr";
 
 import { apiClient } from "./api-client";
 
-const HUB_URL = `${apiClient}/hubs/device-status`;
+const apiBaseUrl = apiClient.defaults.baseURL;
+
+if (!apiBaseUrl) {
+	throw new Error("API base URL is not configured");
+}
+
+const serverUrl = apiBaseUrl.replace(/\/api\/?$/, "");
+const HUB_URL = `${serverUrl}/hubs/device`;
 
 class DeviceStatusHubService {
 	private connection: HubConnection | null = null;
+	private startPromise: Promise<void> | null = null;
 
-	async start(): Promise<void> {
-		if (this.connection && this.connection.state === HubConnectionState.Connected) {
-			return;
-		}
-
+	private getConnection(): HubConnection {
 		if (!this.connection) {
 			this.connection = new HubConnectionBuilder()
 				.withUrl(HUB_URL)
 				.withAutomaticReconnect()
 				.configureLogging(LogLevel.Information)
 				.build();
+
+			this.connection.onreconnecting((error) => {
+				console.warn("SignalR reconnecting...", error);
+			});
+
+			this.connection.onreconnected(async () => {
+				console.log("SignalR reconnected");
+			});
+
+			this.connection.onclose((error) => {
+				console.warn("SignalR connection closed", error);
+			});
 		}
 
-		await this.connection.start();
-
-		console.log("Device Status SignalR connected");
+		return this.connection;
 	}
 
-	async subscribeToDevices(deviceIds: string[]) {
-		if (!this.connection) {
-			await this.start();
-		}
+	async start(): Promise<void> {
+		const connection = this.getConnection();
 
-		if (this.connection!.state !== HubConnectionState.Connected) {
+		if (connection.state === HubConnectionState.Connected) {
 			return;
 		}
 
-		const ids = [...new Set(deviceIds.filter(Boolean))];
+		if (this.startPromise) {
+			return this.startPromise;
+		}
 
-		if (ids.length === 0) return;
+		this.startPromise = connection
+			.start()
+			.then(() => {
+				console.log("✅ PQM SignalR connected");
+				console.log("Hub URL:", HUB_URL);
+			})
+			.finally(() => {
+				this.startPromise = null;
+			});
 
-		await this.connection!.invoke("SubscribeToDevices", ids);
+		return this.startPromise;
 	}
 
-	async unsubscribeFromDevices(deviceIds: string[]) {
-		if (!this.connection || this.connection.state !== HubConnectionState.Connected) {
+	async subscribeToDevices(deviceIds: number[]) {
+		await this.start();
+
+		const connection = this.getConnection();
+
+		if (connection.state !== HubConnectionState.Connected) {
+			throw new Error("SignalR is not connected");
+		}
+
+		const ids = [...new Set(deviceIds.filter((id) => Number.isInteger(id)))];
+
+		if (ids.length === 0) {
 			return;
 		}
 
-		const ids = [...new Set(deviceIds.filter(Boolean))];
+		console.log("📤 SubscribeToDevices:", ids);
 
-		if (ids.length === 0) return;
+		await connection.invoke("SubscribeToDevices", ids);
 
-		await this.connection.invoke("UnsubscribeFromDevices", ids);
+		console.log("✅ Devices subscribed:", ids);
 	}
 
-	onDeviceStatusChanged(callback: (deviceId: string, isOnline: boolean) => void) {
-		if (!this.connection) return;
+	async unsubscribeFromDevices(deviceIds: number[]) {
+		const connection = this.getConnection();
 
-		this.connection.on("DeviceConnectionStatusChanged", (data: { deviceId: string; isOnline: boolean }) => {
+		if (connection.state !== HubConnectionState.Connected) {
+			return;
+		}
+
+		const ids = [...new Set(deviceIds.filter((id) => Number.isInteger(id)))];
+
+		if (ids.length === 0) {
+			return;
+		}
+
+		console.log("📤 UnsubscribeFromDevices:", ids);
+
+		await connection.invoke("UnsubscribeFromDevices", ids);
+	}
+
+	onDeviceStatusChanged(callback: (deviceId: number, isOnline: boolean) => void) {
+		const connection = this.getConnection();
+
+		const handler = (data: { deviceId: number; isOnline: boolean }) => {
+			console.log("📥 DeviceConnectionStatusChanged:", data);
+
 			callback(data.deviceId, data.isOnline);
-		});
-	}
+		};
 
-	removeDeviceStatusChangedListener() {
-		this.connection?.off("DeviceConnectionStatusChanged");
+		connection.on("DeviceConnectionStatusChanged", handler);
+
+		return () => {
+			connection.off("DeviceConnectionStatusChanged", handler);
+		};
 	}
 }
 

@@ -1,19 +1,17 @@
-// signalR hook
-// React state + currently visible 10 devices
-
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { deviceStatusHub } from "../services/deviceStatusHub";
 
-export function useDeviceConnectionStatus(deviceIds: string[]) {
-	const [connectionStatus, setConnectionStatus] = useState<Record<string, boolean>>({});
+export function useDeviceConnectionStatus(deviceIds: number[]) {
+	const [connectionStatus, setConnectionStatus] = useState<Record<number, boolean>>({});
 
 	const [isConnected, setIsConnected] = useState(false);
 
-	const previousDeviceIds = useRef<string[]>([]);
+	const previousDeviceIds = useRef<number[]>([]);
 
 	useEffect(() => {
 		let mounted = true;
+		let removeListener: (() => void) | undefined;
 
 		const initialize = async () => {
 			try {
@@ -23,8 +21,10 @@ export function useDeviceConnectionStatus(deviceIds: string[]) {
 
 				setIsConnected(true);
 
-				deviceStatusHub.onDeviceStatusChanged((deviceId, isOnline) => {
+				removeListener = deviceStatusHub.onDeviceStatusChanged((deviceId, isOnline) => {
 					if (!mounted) return;
+
+					console.log("📥 STATUS:", deviceId, isOnline);
 
 					setConnectionStatus((prev) => ({
 						...prev,
@@ -32,7 +32,11 @@ export function useDeviceConnectionStatus(deviceIds: string[]) {
 					}));
 				});
 			} catch (error) {
-				console.error("SignalR connection error:", error);
+				console.error("❌ SignalR connection error:", error);
+
+				if (mounted) {
+					setIsConnected(false);
+				}
 			}
 		};
 
@@ -40,16 +44,19 @@ export function useDeviceConnectionStatus(deviceIds: string[]) {
 
 		return () => {
 			mounted = false;
-
-			deviceStatusHub.removeDeviceStatusChangedListener();
+			removeListener?.();
 		};
 	}, []);
+
+	const normalizedDeviceIds = useMemo(() => {
+		return [...new Set(deviceIds.filter((id) => Number.isInteger(id)))];
+	}, [deviceIds]);
 
 	useEffect(() => {
 		if (!isConnected) return;
 
 		const updateSubscriptions = async () => {
-			const currentIds = [...new Set(deviceIds.filter(Boolean))];
+			const currentIds = normalizedDeviceIds;
 
 			const oldIds = previousDeviceIds.current;
 
@@ -68,12 +75,12 @@ export function useDeviceConnectionStatus(deviceIds: string[]) {
 
 				previousDeviceIds.current = currentIds;
 			} catch (error) {
-				console.error("Device subscription error:", error);
+				console.error("❌ Device subscription error:", error);
 			}
 		};
 
 		updateSubscriptions();
-	}, [deviceIds, isConnected]);
+	}, [normalizedDeviceIds, isConnected]);
 
 	return {
 		connectionStatus,

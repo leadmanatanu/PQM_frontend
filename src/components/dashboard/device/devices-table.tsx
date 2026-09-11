@@ -123,8 +123,12 @@ export function DevicesTable({
 		return rows.map((device) => device.id);
 	}, [rows]);
 
+	// const visibleDeviceIds = React.useMemo(() => {
+	// 	return rows.map((device) => String(device.id));
+	// }, [rows]);
+
 	const visibleDeviceIds = React.useMemo(() => {
-		return rows.map((device) => String(device.id));
+		return rows.map((device) => device.id);
 	}, [rows]);
 
 	const { connectionStatus } = useDeviceConnectionStatus(visibleDeviceIds);
@@ -198,7 +202,7 @@ export function DevicesTable({
 								const isSelected = selected?.has(row.id);
 
 								// Merge static DB data with live SignalR updates
-								const liveStatus = connectionStatus[String(row.id)];
+								const liveStatus = connectionStatus[row.id];
 
 								const connectionStatusText =
 									liveStatus === true ? "Online" : liveStatus === false ? "Offline" : "Checking...";
