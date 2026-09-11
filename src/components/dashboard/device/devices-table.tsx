@@ -86,6 +86,13 @@ export interface Device {
 
 	scheduledTime?: string;
 
+	deviceSyncSchedule?: {
+		id: number;
+		isEnabled: boolean;
+		scheduledTime?: string;
+		repeatMode?: string;
+	} | null;
+
 	deviceSyncScheduleId?: number | null;
 }
 interface DevicesTableProps {
@@ -94,6 +101,10 @@ interface DevicesTableProps {
 	rows?: Device[];
 	rowsPerPage?: number;
 	show?: boolean;
+
+	onPageChange?: (event: React.MouseEvent<HTMLButtonElement> | null, page: number) => void;
+	onRowsPerPageChange?: (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+
 	onEdit?: (deviceId: number) => void;
 	onDelete?: (deviceId: number) => void;
 	onSyncNow?: (deviceId: number) => void;
@@ -107,14 +118,15 @@ export function DevicesTable({
 	page = 0,
 	rowsPerPage = 10,
 	show = true,
+
+	onPageChange = () => {},
+	onRowsPerPageChange = () => {},
+
 	onEdit = () => {},
 	onDelete = () => {},
 	onSyncNow = () => {},
 	syncingDeviceIds = new Set<number>(),
 }: DevicesTableProps): React.JSX.Element | null {
-	console.log("DevicesTable rows:", rows);
-	console.log("DevicesTable count:", count);
-
 	const [menuAnchorEl, setMenuAnchorEl] = React.useState<HTMLElement | null>(null);
 
 	const [selectedDevice, setSelectedDevice] = React.useState<Device | null>(null);
@@ -242,32 +254,12 @@ export function DevicesTable({
 												sx={{ fontWeight: 600, minWidth: 80, textAlign: "center" }}
 											/>
 										</TableCell>
-										<TableCell>
-											{row.isScheduleEnabled ? (
-												<Chip
-													label={row.scheduledTime ? `Yes (${formatSchedTime(row.scheduledTime)})` : "Yes"}
-													color="success"
-													size="small"
-													variant="filled"
-													sx={{ fontWeight: 600, height: 24, fontSize: "0.75rem" }}
-												/>
-											) : row.hasScheduleConfigured ? (
-												<Chip
-													label="Disabled"
-													color="warning"
-													size="small"
-													variant="outlined"
-													sx={{ height: 24, fontSize: "0.75rem" }}
-												/>
-											) : (
-												<Chip
-													label="No"
-													color="default"
-													size="small"
-													variant="outlined"
-													sx={{ height: 24, fontSize: "0.75rem" }}
-												/>
-											)}
+										<TableCell sx={{ whiteSpace: "nowrap" }}>
+											{row.deviceSyncSchedule?.isEnabled
+												? row.deviceSyncSchedule.scheduledTime
+													? formatSchedTime(row.deviceSyncSchedule.scheduledTime)
+													: "Yes"
+												: "No"}
 										</TableCell>
 										<TableCell sx={{ whiteSpace: "nowrap" }}>{row.ip}</TableCell>
 										<TableCell sx={{ whiteSpace: "nowrap" }}>
@@ -296,11 +288,11 @@ export function DevicesTable({
 			<TablePagination
 				component="div"
 				count={count}
-				onPageChange={() => {}}
-				onRowsPerPageChange={() => {}}
 				page={page}
 				rowsPerPage={rowsPerPage}
 				rowsPerPageOptions={[5, 10, 25]}
+				onPageChange={onPageChange}
+				onRowsPerPageChange={onRowsPerPageChange}
 			/>
 
 			{/* Three-Dot Dropdown Menu - Exactly Two Options: Sync Now and Edit */}

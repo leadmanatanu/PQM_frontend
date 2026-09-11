@@ -1,544 +1,511 @@
 "use client";
 
-import Alert from '@mui/material/Alert';
-import Box from '@mui/material/Box';
-import Button from '@mui/material/Button';
-import Snackbar from '@mui/material/Snackbar';
-import Stack from '@mui/material/Stack';
-import type { Metadata } from 'next';
-import * as React from 'react';
-import { useEffect, useState } from 'react';
+import * as React from "react";
+import { useEffect, useState } from "react";
+import type { Metadata } from "next";
+import Alert from "@mui/material/Alert";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import FormControl from "@mui/material/FormControl";
+import InputLabel from "@mui/material/InputLabel";
+import MenuItem from "@mui/material/MenuItem";
+import Select from "@mui/material/Select";
+import Snackbar from "@mui/material/Snackbar";
+import Stack from "@mui/material/Stack";
+import { DownloadIcon } from "@phosphor-icons/react/dist/ssr/Download";
+import { PlusIcon } from "@phosphor-icons/react/dist/ssr/Plus";
+import * as XLSX from "xlsx";
 
-import { DownloadIcon } from '@phosphor-icons/react/dist/ssr/Download';
-import { PlusIcon } from '@phosphor-icons/react/dist/ssr/Plus';
+import { deleteDevice, fetchDevices, syncDeviceNow } from "../../../api/device";
+import { AddDeviceForm } from "../../../components/dashboard/device/add-device-form";
+import { DevicesFilters } from "../../../components/dashboard/device/devices-filters";
+import { DevicesTable } from "../../../components/dashboard/device/devices-table";
+import type { Device } from "../../../components/dashboard/device/devices-table";
+import { useDeviceConnectionStatus } from "../../../hooks/useDeviceConnectionStatus";
 
-import { AddDeviceForm } from '../../../components/dashboard/device/add-device-form';
-import { DevicesFilters } from '../../../components/dashboard/device/devices-filters';
-import { DevicesTable } from '../../../components/dashboard/device/devices-table';
-
-import type { Device } from '../../../components/dashboard/device/devices-table';
-
-import {
-  deleteDevice,
-  fetchDevices,
-  syncDeviceNow
-} from '../../../api/device';
-
-import * as XLSX from 'xlsx';
-
-
-function applyPagination(
-  rows: Device[],
-  page: number,
-  rowsPerPage: number
-): Device[] {
-  return rows.slice(
-    page * rowsPerPage,
-    page * rowsPerPage + rowsPerPage
-  );
+function applyPagination(rows: Device[], page: number, rowsPerPage: number): Device[] {
+	return rows.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
 }
-
 
 export default function Page(): React.JSX.Element {
+	const [isVisible, setIsVisible] = useState(true);
 
-  const [isVisible, setIsVisible] = useState(true);
+	const [devices, setDevices] = useState<Device[]>([]);
 
-  const [devices, setDevices] = useState<Device[]>([]);
+	const [editingDevice, setEditingDevice] = useState<Device | null>(null);
 
-  const [editingDevice, setEditingDevice] =
-    useState<Device | null>(null);
+	const [loading, setLoading] = useState<"fetch" | null>("fetch");
 
-  const [loading, setLoading] =
-    useState<'fetch' | null>('fetch');
+	const [syncingDeviceIds, setSyncingDeviceIds] = useState<Set<number>>(new Set());
 
-  const [syncingDeviceIds, setSyncingDeviceIds] =
-    useState<Set<number>>(new Set());
+	const [snackbarOpen, setSnackbarOpen] = useState(false);
 
-  const [snackbarOpen, setSnackbarOpen] =
-    useState(false);
+	const [snackbarMessage, setSnackbarMessage] = useState("");
 
-  const [snackbarMessage, setSnackbarMessage] =
-    useState('');
+	const [snackbarSeverity, setSnackbarSeverity] = useState<"success" | "error" | "warning">("success");
 
-  const [snackbarSeverity, setSnackbarSeverity] =
-    useState<'success' | 'error' | 'warning'>('success');
+	const [page, setPage] = useState(0);
+	const [rowsPerPage, setRowsPerPage] = useState(10);
 
-  const page = 0;
-  const rowsPerPage = 10;
+	// ---------------------------------------------------------
+	// Fetch devices
+	// ---------------------------------------------------------
 
+	const loadDevices = async () => {
+		setLoading("fetch");
 
-  // ---------------------------------------------------------
-  // Fetch devices
-  // ---------------------------------------------------------
+		try {
+			const fetchedDevices = await fetchDevices();
 
-  const loadDevices = async () => {
+			setDevices(fetchedDevices ?? []);
+		} catch (error) {
+			console.error("Failed to fetch devices:", error);
 
-    setLoading('fetch');
+			setSnackbarMessage("Failed to fetch devices");
+			setSnackbarSeverity("error");
+			setSnackbarOpen(true);
+		} finally {
+			setLoading(null);
+		}
+	};
 
-    try {
+	useEffect(() => {
+		loadDevices();
+	}, []);
 
-      const fetchedDevices = await fetchDevices();
+	// ---------------------------------------------------------
+	// Search + Filters
+	// ---------------------------------------------------------
 
-      setDevices(fetchedDevices ?? []);
+	const [searchQuery, setSearchQuery] = useState("");
 
-    } catch (error) {
+	// Empty = no filter = show all
+	const [meterTypeFilter, setMeterTypeFilter] = useState("");
 
-      console.error('Failed to fetch devices:', error);
+	// Empty = no filter = show all
+	const [connectionFilter, setConnectionFilter] = useState("");
 
-      setSnackbarMessage('Failed to fetch devices');
-      setSnackbarSeverity('error');
-      setSnackbarOpen(true);
+	// Empty = no filter = show all
+	const [scheduledFilter, setScheduledFilter] = useState("");
 
-    } finally {
+	// ---------------------------------------------------------
+	// SignalR connection status
+	// ---------------------------------------------------------
 
-      setLoading(null);
+	const deviceIds = React.useMemo(() => {
+		return devices.map((device) => device.id);
+	}, [devices]);
 
-    }
-  };
+	const { connectionStatus } = useDeviceConnectionStatus(deviceIds);
 
+	// ---------------------------------------------------------
+	// Search + Filters logic
+	// ---------------------------------------------------------
 
-  useEffect(() => {
+	const filteredDevices = React.useMemo(() => {
+		return (devices ?? []).filter((device) => {
+			// ---------------------------------------------
+			// Search
+			// ---------------------------------------------
 
-    loadDevices();
+			const q = searchQuery.toLowerCase().trim();
 
-  }, []);
+			const matchesSearch =
+				!q ||
+				device.name?.toLowerCase().includes(q) ||
+				device.serialNumber?.toLowerCase().includes(q) ||
+				device.consumerNumber?.toLowerCase().includes(q) ||
+				device.ip?.toLowerCase().includes(q);
 
+			if (!matchesSearch) {
+				return false;
+			}
 
-  // ---------------------------------------------------------
-  // Search
-  // ---------------------------------------------------------
+			// ---------------------------------------------
+			// Meter Type
+			// ---------------------------------------------
 
-  const [searchQuery, setSearchQuery] =
-    useState('');
+			if (meterTypeFilter) {
+				const meterType = typeof device.meterType === "object" ? device.meterType?.name : device.meterType || "";
 
+				if (meterType.toLowerCase() !== meterTypeFilter.toLowerCase()) {
+					return false;
+				}
+			}
 
-  const filteredDevices =
-    (devices ?? []).filter((device) => {
+			// ---------------------------------------------
+			// Connection
+			// ---------------------------------------------
 
-      if (!searchQuery.trim()) {
-        return true;
-      }
+			if (connectionFilter) {
+				const isOnline = connectionStatus[device.id];
 
-      const q = searchQuery
-        .toLowerCase()
-        .trim();
+				if (connectionFilter === "online" && isOnline !== true) {
+					return false;
+				}
 
-      return (
-        device.name?.toLowerCase().includes(q) ||
-        device.serialNumber?.toLowerCase().includes(q) ||
-        device.consumerNumber?.toLowerCase().includes(q) ||
-        device.ip?.toLowerCase().includes(q)
-      );
+				if (connectionFilter === "offline" && isOnline !== false) {
+					return false;
+				}
+			}
 
-    });
+			// ---------------------------------------------
+			// Scheduled
+			// ---------------------------------------------
 
+			if (scheduledFilter) {
+				const isScheduled = device.deviceSyncSchedule != null && device.deviceSyncSchedule.isEnabled === true;
 
-  // ---------------------------------------------------------
-  // Pagination
-  // ---------------------------------------------------------
+				if (scheduledFilter === "yes" && !isScheduled) {
+					return false;
+				}
 
-  const totalRows =
-    filteredDevices.length;
+				if (scheduledFilter === "no" && isScheduled) {
+					return false;
+				}
+			}
 
-  const paginatedDevices =
-    applyPagination(
-      filteredDevices,
-      page,
-      rowsPerPage
-    );
+			return true;
+		});
+	}, [devices, searchQuery, meterTypeFilter, connectionFilter, scheduledFilter, connectionStatus]);
 
+	// ---------------------------------------------------------
+	// Reset page when filter/search changes
+	// ---------------------------------------------------------
 
-  // ---------------------------------------------------------
-  // Toggle Add/Edit form
-  // ---------------------------------------------------------
+	useEffect(() => {
+		setPage(0);
+	}, [searchQuery, meterTypeFilter, connectionFilter, scheduledFilter]);
 
-  const toggleVisibility = async (
-    device: Device | null = null
-  ) => {
+	// ---------------------------------------------------------
+	// Pagination
+	// ---------------------------------------------------------
 
-    setIsVisible((prev) => !prev);
+	const totalRows = filteredDevices.length;
 
-    setEditingDevice(device);
+	// const paginatedDevices = applyPagination(filteredDevices, page, rowsPerPage);
+	const paginatedDevices = filteredDevices.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
 
-    await loadDevices();
+	// ---------------------------------------------------------
+	// Toggle Add/Edit form
+	// ---------------------------------------------------------
 
-  };
+	const toggleVisibility = async (device: Device | null = null) => {
+		setIsVisible((prev) => !prev);
 
+		setEditingDevice(device);
 
-  // ---------------------------------------------------------
-  // Edit device
-  // ---------------------------------------------------------
+		await loadDevices();
+	};
 
-  const handleEdit = (
-    deviceId: number
-  ) => {
+	// ---------------------------------------------------------
+	// Edit device
+	// ---------------------------------------------------------
 
-    const device =
-      (devices ?? []).find(
-        (d) => d.id === deviceId
-      ) || null;
-          setIsVisible(false);
+	const handleEdit = (deviceId: number) => {
+		const device = (devices ?? []).find((d) => d.id === deviceId) || null;
+		setIsVisible(false);
 
-    setEditingDevice(device);
+		setEditingDevice(device);
+	};
 
-  };
+	// ---------------------------------------------------------
+	// Delete device
+	// ---------------------------------------------------------
 
+	const handleDelete = async (deviceId: number) => {
+		try {
+			const res = await deleteDevice(deviceId);
 
-  // ---------------------------------------------------------
-  // Delete device
-  // ---------------------------------------------------------
+			if (res && res.status) {
+				setDevices((prev) => prev.filter((d) => d.id !== deviceId));
 
-  const handleDelete = async (
-    deviceId: number
-  ) => {
+				setSnackbarMessage(`Device ${deviceId} soft-deleted successfully.`);
 
-    try {
+				setSnackbarSeverity("success");
+				setSnackbarOpen(true);
+			} else {
+				setSnackbarMessage(`Failed to delete device ${deviceId}.`);
 
-      const res =
-        await deleteDevice(deviceId);
+				setSnackbarSeverity("error");
+				setSnackbarOpen(true);
+			}
+		} catch (err) {
+			setSnackbarMessage(`Error deleting device: ${err}`);
 
-      if (res && res.status) {
+			setSnackbarSeverity("error");
+			setSnackbarOpen(true);
+		}
+	};
 
-        setDevices((prev) =>
-          prev.filter(
-            (d) => d.id !== deviceId
-          )
-        );
+	// ---------------------------------------------------------
+	// Sync device now
+	// ---------------------------------------------------------
 
-        setSnackbarMessage(
-          `Device ${deviceId} soft-deleted successfully.`
-        );
+	const handleSyncNow = async (deviceId: number) => {
+		setSyncingDeviceIds((prev) => new Set(prev).add(deviceId));
 
-        setSnackbarSeverity('success');
-        setSnackbarOpen(true);
+		try {
+			const result = await syncDeviceNow(deviceId);
 
-      } else {
+			if (!result.status) {
+				setSyncingDeviceIds((prev) => {
+					const next = new Set(prev);
 
-        setSnackbarMessage(
-          `Failed to delete device ${deviceId}.`
-        );
+					next.delete(deviceId);
 
-        setSnackbarSeverity('error');
-        setSnackbarOpen(true);
+					return next;
+				});
 
-      }
+				if (result.statusCode === 409) {
+					setSnackbarMessage(result.message || `Sync is already in progress for device ${deviceId}.`);
 
-    } catch (err) {
+					setSnackbarSeverity("warning");
+				} else {
+					setSnackbarMessage(result.message || `Failed to trigger sync for device ${deviceId}.`);
 
-      setSnackbarMessage(
-        `Error deleting device: ${err}`
-      );
+					setSnackbarSeverity("error");
+				}
 
-      setSnackbarSeverity('error');
-      setSnackbarOpen(true);
+				setSnackbarOpen(true);
+			} else {
+				setSnackbarMessage(`Sync initiated for device ${deviceId}. Live status will update below.`);
 
-    }
+				setSnackbarSeverity("success");
+				setSnackbarOpen(true);
+			}
+		} catch (error) {
+			console.error(`Failed to sync device ${deviceId}:`, error);
 
-  };
+			setSyncingDeviceIds((prev) => {
+				const next = new Set(prev);
 
+				next.delete(deviceId);
 
-  // ---------------------------------------------------------
-  // Sync device now
-  // ---------------------------------------------------------
+				return next;
+			});
 
-  const handleSyncNow = async (
-    deviceId: number
-  ) => {
+			setSnackbarMessage(`Failed to sync device ${deviceId}.`);
 
-    setSyncingDeviceIds((prev) =>
-      new Set(prev).add(deviceId)
-    );
+			setSnackbarSeverity("error");
+			setSnackbarOpen(true);
+		}
+	};
 
-    try {
+	// ---------------------------------------------------------
+	// Snackbar
+	// ---------------------------------------------------------
 
-      const result =
-        await syncDeviceNow(deviceId);
+	const handleSnackbarClose = () => {
+		setSnackbarOpen(false);
 
-      if (!result.status) {
+		setSnackbarMessage("");
+	};
 
-        setSyncingDeviceIds((prev) => {
+	// ---------------------------------------------------------
+	// Export devices
+	// ---------------------------------------------------------
 
-          const next =
-            new Set(prev);
+	const handleExport = () => {
+		const data = (devices ?? []).map((device) => ({
+			ID: device.id,
 
-          next.delete(deviceId);
+			Name: device.name,
 
-          return next;
+			"Serial No": device.serialNumber,
 
-        });
+			"Consumer No": device.consumerNumber,
 
+			Status: device.isActive ? "Active" : "Inactive",
 
-        if (result.statusCode === 409) {
+			IP: device.ip,
 
-          setSnackbarMessage(
-            result.message ||
-            `Sync is already in progress for device ${deviceId}.`
-          );
+			"Created Date": device.createdDate || "",
+		}));
 
-          setSnackbarSeverity('warning');
+		const worksheet = XLSX.utils.json_to_sheet(data);
 
-        } else {
-
-          setSnackbarMessage(
-            result.message ||
-            `Failed to trigger sync for device ${deviceId}.`
-          );
-
-          setSnackbarSeverity('error');
-
-        }
-
-        setSnackbarOpen(true);
-
-      } else {
-
-        setSnackbarMessage(
-          `Sync initiated for device ${deviceId}. Live status will update below.`
-        );
-
-        setSnackbarSeverity('success');
-        setSnackbarOpen(true);
-
-      }
-
-    } catch (error) {
-
-      console.error(
-        `Failed to sync device ${deviceId}:`,
-        error
-      );
-
-      setSyncingDeviceIds((prev) => {
-
-        const next =
-          new Set(prev);
-
-        next.delete(deviceId);
-
-        return next;
-
-      });
-
-      setSnackbarMessage(
-        `Failed to sync device ${deviceId}.`
-      );
-
-      setSnackbarSeverity('error');
-      setSnackbarOpen(true);
-
-    }
-
-  };
-
-  // ---------------------------------------------------------
-  // Snackbar
-  // ---------------------------------------------------------
-
-  const handleSnackbarClose = () => {
-
-    setSnackbarOpen(false);
-
-    setSnackbarMessage('');
-
-  };
-
-
-  // ---------------------------------------------------------
-  // Export devices
-  // ---------------------------------------------------------
-
-  const handleExport = () => {
-
-    const data =
-      (devices ?? []).map(
-        (device) => ({
-
-          ID: device.id,
-
-          Name: device.name,
-
-          'Serial No':
-            device.serialNumber,
-
-          'Consumer No':
-            device.consumerNumber,
-
-          Status:
-            device.isActive
-              ? 'Active'
-              : 'Inactive',
-
-          IP: device.ip,
-
-          'Created Date':
-            device.createdDate || ''
-
-        })
-      );
-
-
-    const worksheet =
-      XLSX.utils.json_to_sheet(data);
-
-    const workbook =
-      XLSX.utils.book_new();
-
-    XLSX.utils.book_append_sheet(
-      workbook,
-      worksheet,
-      'Devices'
-    );
-
-    XLSX.writeFile(
-      workbook,
-      'devices.xlsx'
-    );
-
-  };
-
-
-  // ---------------------------------------------------------
-  // UI
-  // ---------------------------------------------------------
-
-  return (
-
-    <div>
-
-      <Stack spacing={3}>
-
-        <Stack
-          direction="row"
-          spacing={2}
-          justifyContent="space-between"
-          alignItems="center"
-          sx={{
-            width: '100%'
-          }}
-        >
-
-          {isVisible ? (
-
-            <DevicesFilters
-              show={isVisible}
-              value={searchQuery}
-              onChange={(e) =>
-                setSearchQuery(
-                  e.target.value
-                )
-              }
-            />
-
-          ) : (
-
-            <Box />
-
-          )}
-
-
-          {isVisible && (
-
-            <Stack
-              direction="row"
-              spacing={1.5}
-              alignItems="center"
-            >
-
-              <div>
-
-                <Button
-                  startIcon={
-                    <PlusIcon
-                      fontSize="var(--icon-fontSize-md)"
-                    />
-                  }
-                  variant="contained"
-                  onClick={() =>
-                    toggleVisibility(null)
-                  }
-                >
-                  Add
-                </Button>
-
-              </div>
-
-
-              <div>
-
-                <Button
-                  startIcon={
-                    <DownloadIcon
-                      fontSize="var(--icon-fontSize-md)"
-                    />
-                  }
-                  variant="contained"
-                  onClick={handleExport}
-                >
-                  Export
-                </Button>
-
-              </div>
-
-            </Stack>
-
-          )}
-
-        </Stack>
-
-
-        <DevicesTable
-          show={isVisible}
-          count={totalRows}
-          page={page}
-          rows={paginatedDevices}
-          rowsPerPage={rowsPerPage}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-          onSyncNow={handleSyncNow}
-          syncingDeviceIds={syncingDeviceIds}
-        />
-
-
-        <AddDeviceForm
-          show={!isVisible}
-          onToggleVisibility={toggleVisibility}
-          editingDevice={editingDevice}
-          setEditingDevice={setEditingDevice}
-        />
-
-      </Stack>
-
-
-      <Snackbar
-        open={snackbarOpen}
-        autoHideDuration={6000}
-        onClose={handleSnackbarClose}
-        anchorOrigin={{
-          vertical: 'top',
-          horizontal: 'center'
-        }}
-      >
-
-        <Alert
-          severity={snackbarSeverity}
-          sx={{
-            width: '100%'
-          }}
-          onClose={handleSnackbarClose}
-          variant="filled"
-        >
-          {snackbarMessage}
-        </Alert>
-
-      </Snackbar>
-
-    </div>
-
-  );
-
+		const workbook = XLSX.utils.book_new();
+
+		XLSX.utils.book_append_sheet(workbook, worksheet, "Devices");
+
+		XLSX.writeFile(workbook, "devices.xlsx");
+	};
+
+	// ---------------------------------------------------------
+	// UI
+	// ---------------------------------------------------------
+
+	return (
+		<div>
+			<Stack spacing={3}>
+				<Stack
+					direction="row"
+					spacing={2}
+					justifyContent="space-between"
+					alignItems="center"
+					sx={{
+						width: "100%",
+					}}
+				>
+					{isVisible ? (
+						<Stack
+							direction="row"
+							spacing={1.5}
+							alignItems="center"
+							sx={{
+								flex: 1,
+								minWidth: 0,
+							}}
+						>
+							{/* Search */}
+
+							<Box sx={{ width: 300 }}>
+								<DevicesFilters
+									show={isVisible}
+									value={searchQuery}
+									onChange={(e) => {
+										setSearchQuery(e.target.value);
+										setPage(0);
+									}}
+								/>
+							</Box>
+
+							{/* Meter Type */}
+
+							<FormControl size="small" sx={{ minWidth: 140 }}>
+								<InputLabel>Meter Type</InputLabel>
+
+								<Select
+									value={meterTypeFilter}
+									label="Meter Type"
+									onChange={(e) => {
+										setMeterTypeFilter(e.target.value);
+										setPage(0);
+									}}
+								>
+									<MenuItem>--Please choose an option--</MenuItem>
+									<MenuItem value="abt">ABT</MenuItem>
+
+									<MenuItem value="pq">PQ</MenuItem>
+
+									<MenuItem value="both">Both</MenuItem>
+								</Select>
+							</FormControl>
+
+							{/* Connection */}
+
+							<FormControl size="small" sx={{ minWidth: 140 }}>
+								<InputLabel>Connection</InputLabel>
+
+								<Select
+									value={connectionFilter}
+									label="Connection"
+									onChange={(e) => {
+										setConnectionFilter(e.target.value);
+										setPage(0);
+									}}
+								>
+									<MenuItem>--Please choose an option--</MenuItem>
+									<MenuItem value="online">Online</MenuItem>
+
+									<MenuItem value="offline">Offline</MenuItem>
+								</Select>
+							</FormControl>
+
+							{/* Scheduled */}
+
+							<FormControl size="small" sx={{ minWidth: 130 }}>
+								<InputLabel>Scheduled</InputLabel>
+
+								<Select
+									value={scheduledFilter}
+									label="Scheduled"
+									onChange={(e) => {
+										setScheduledFilter(e.target.value);
+										setPage(0);
+									}}
+								>
+									<MenuItem>--Please choose an option--</MenuItem>
+									<MenuItem value="yes">Yes</MenuItem>
+
+									<MenuItem value="no">No</MenuItem>
+								</Select>
+							</FormControl>
+						</Stack>
+					) : (
+						<Box />
+					)}
+
+					{isVisible && (
+						<Stack direction="row" spacing={1.5} alignItems="center">
+							<div>
+								<Button
+									startIcon={<PlusIcon fontSize="var(--icon-fontSize-md)" />}
+									variant="contained"
+									onClick={() => toggleVisibility(null)}
+								>
+									Add
+								</Button>
+							</div>
+
+							<div>
+								<Button
+									startIcon={<DownloadIcon fontSize="var(--icon-fontSize-md)" />}
+									variant="contained"
+									onClick={handleExport}
+								>
+									Export
+								</Button>
+							</div>
+						</Stack>
+					)}
+				</Stack>
+
+				<DevicesTable
+					count={filteredDevices.length}
+					page={page}
+					rows={paginatedDevices}
+					rowsPerPage={rowsPerPage}
+					onPageChange={(_, newPage) => setPage(newPage)}
+					onRowsPerPageChange={(event) => {
+						setRowsPerPage(parseInt(event.target.value, 10));
+						setPage(0);
+					}}
+				/>
+
+				<AddDeviceForm
+					show={!isVisible}
+					onToggleVisibility={toggleVisibility}
+					editingDevice={editingDevice}
+					setEditingDevice={setEditingDevice}
+				/>
+			</Stack>
+
+			<Snackbar
+				open={snackbarOpen}
+				autoHideDuration={6000}
+				onClose={handleSnackbarClose}
+				anchorOrigin={{
+					vertical: "top",
+					horizontal: "center",
+				}}
+			>
+				<Alert
+					severity={snackbarSeverity}
+					sx={{
+						width: "100%",
+					}}
+					onClose={handleSnackbarClose}
+					variant="filled"
+				>
+					{snackbarMessage}
+				</Alert>
+			</Snackbar>
+		</div>
+	);
 }
 
-
 export const metadata: Metadata = {
-  title: 'Devices | Dashboard'
+	title: "Devices | Dashboard",
 };

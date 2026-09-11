@@ -52,10 +52,7 @@ class DeviceStatusHubService {
 
 		this.startPromise = connection
 			.start()
-			.then(() => {
-				console.log("✅ PQM SignalR connected");
-				console.log("Hub URL:", HUB_URL);
-			})
+
 			.finally(() => {
 				this.startPromise = null;
 			});
@@ -77,8 +74,6 @@ class DeviceStatusHubService {
 		if (ids.length === 0) {
 			return;
 		}
-
-		console.log("📤 SubscribeToDevices:", ids);
 
 		await connection.invoke("SubscribeToDevices", ids);
 
@@ -107,8 +102,6 @@ class DeviceStatusHubService {
 		const connection = this.getConnection();
 
 		const handler = (data: { deviceId: number; isOnline: boolean }) => {
-			console.log("📥 DeviceConnectionStatusChanged:", data);
-
 			callback(data.deviceId, data.isOnline);
 		};
 

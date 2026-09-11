@@ -24,7 +24,7 @@ export function useDeviceConnectionStatus(deviceIds: number[]) {
 				removeListener = deviceStatusHub.onDeviceStatusChanged((deviceId, isOnline) => {
 					if (!mounted) return;
 
-					console.log("📥 STATUS:", deviceId, isOnline);
+					// console.log("📥 STATUS:", deviceId, isOnline);
 
 					setConnectionStatus((prev) => ({
 						...prev,

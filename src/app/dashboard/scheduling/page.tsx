@@ -34,6 +34,7 @@ import { MagnifyingGlassIcon } from "@phosphor-icons/react/dist/ssr/MagnifyingGl
 
 import {
 	createDeviceSchedule,
+	deleteDeviceSchedule,
 	DeviceScheduleItem,
 	fetchAllDeviceSchedules,
 	updateDeviceSchedule,
@@ -69,6 +70,23 @@ export default function SchedulingPage(): React.JSX.Element {
 		message: "",
 		severity: "success",
 	});
+
+	//delete pop-up
+	const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
+	const [deletingSchedule, setDeletingSchedule] = React.useState<DeviceScheduleItem | null>(null);
+	const [deleting, setDeleting] = React.useState(false);
+
+	const handleOpenDeleteDialog = (row: DeviceScheduleItem) => {
+		setDeletingSchedule(row);
+		setDeleteDialogOpen(true);
+	};
+
+	const handleCloseDeleteDialog = () => {
+		if (deleting) return;
+
+		setDeleteDialogOpen(false);
+		setDeletingSchedule(null);
+	};
 
 	// ============================================================
 	// LOAD SCHEDULES
@@ -226,6 +244,55 @@ export default function SchedulingPage(): React.JSX.Element {
 			});
 		} finally {
 			setSavingModal(false);
+		}
+	};
+
+	// delete logic
+	const handleDeleteSchedule = async () => {
+		if (!deletingSchedule) return;
+
+		setDeleting(true);
+
+		try {
+			const res = await deleteDeviceSchedule(deletingSchedule.id);
+
+			if (res?.status === false) {
+				setSnackbar({
+					open: true,
+					message: res.errors?.[0] || "Failed to delete schedule.",
+					severity: "error",
+				});
+				return;
+			}
+
+			setSnackbar({
+				open: true,
+				message: "Schedule deleted successfully.",
+				severity: "success",
+			});
+
+			setDeleteDialogOpen(false);
+			setDeletingSchedule(null);
+
+			await loadData(false);
+		} catch (err: any) {
+			console.error("Error deleting schedule:", err);
+
+			const status = err?.response?.status;
+
+			const backendMessage =
+				err?.response?.data?.message || err?.response?.data?.errors?.[0] || err?.response?.data?.title;
+
+			setSnackbar({
+				open: true,
+				message:
+					status === 409
+						? backendMessage || "Cannot delete this schedule because it is linked to an active device."
+						: backendMessage || "Failed to delete schedule.",
+				severity: "error",
+			});
+		} finally {
+			setDeleting(false);
 		}
 	};
 
@@ -485,7 +552,7 @@ export default function SchedulingPage(): React.JSX.Element {
 											<TableCell>
 												{row.isEnabled ? (
 													<Chip
-														size="small"
+														size="small"	
 														label="Yes"
 														// color="success"
 														variant="outlined"
@@ -565,10 +632,18 @@ export default function SchedulingPage(): React.JSX.Element {
 													variant="outlined"
 													color="primary"
 													size="small"
-													startIcon={<EditIcon />}
 													onClick={() => handleOpenEditModal(row)}
 												>
 													Edit
+												</Button>
+												<Button
+													variant="outlined"
+													color="error"
+													size="small"
+													sx={{ ml: 1 }}
+													onClick={() => handleOpenDeleteDialog(row)}
+												>
+													Delete
 												</Button>
 											</TableCell>
 										</TableRow>
@@ -623,6 +698,34 @@ export default function SchedulingPage(): React.JSX.Element {
 
 					<Button variant="contained" color="primary" onClick={handleSaveSchedule} disabled={savingModal}>
 						{savingModal ? "Saving..." : "Save Schedule"}
+					</Button>
+				</DialogActions>
+			</Dialog>
+
+			{/* =====================================================
+    DELETE CONFIRMATION MODAL
+===================================================== */}
+
+			<Dialog open={deleteDialogOpen} onClose={handleCloseDeleteDialog} maxWidth="xs" fullWidth>
+				<DialogTitle sx={{ fontWeight: 600 }}>Delete Schedule</DialogTitle>
+
+				<DialogContent>
+					<Typography>Are you sure you want to delete this schedule?</Typography>
+
+					{deletingSchedule?.scheduledTime && (
+						<Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+							Scheduled Time: <strong>{formatScheduledTimeDisplay(deletingSchedule.scheduledTime)}</strong>
+						</Typography>
+					)}
+				</DialogContent>
+
+				<DialogActions sx={{ px: 3, py: 2 }}>
+					<Button onClick={handleCloseDeleteDialog} disabled={deleting} color="inherit">
+						Cancel
+					</Button>
+
+					<Button onClick={handleDeleteSchedule} variant="contained" color="error" disabled={deleting}>
+						{deleting ? "Deleting..." : " Delete"}
 					</Button>
 				</DialogActions>
 			</Dialog>
