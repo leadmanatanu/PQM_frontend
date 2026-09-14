@@ -584,19 +584,6 @@ export default function SchedulingPage(): React.JSX.Element {
 													<Typography variant="caption">
 														{row.lastRunAtUtc ? formatUtcDisplay(row.lastRunAtUtc) : "Not Run"}
 													</Typography>
-
-													{row.lastRunStatus && (
-														<Chip
-															size="small"
-															label={row.lastRunStatus}
-															color={row.lastRunStatus === "Success" ? "success" : "error"}
-															variant="outlined"
-															sx={{
-																height: 20,
-																fontSize: "0.7rem",
-															}}
-														/>
-													)}
 												</Stack>
 											</TableCell>
 
