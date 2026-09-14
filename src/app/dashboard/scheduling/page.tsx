@@ -2,6 +2,8 @@
 
 import * as React from "react";
 import AddIcon from "@mui/icons-material/Add";
+import CheckIcon from "@mui/icons-material/Check";
+import CloseIcon from "@mui/icons-material/Close";
 import EditIcon from "@mui/icons-material/Edit";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
@@ -16,11 +18,13 @@ import {
 	DialogActions,
 	DialogContent,
 	DialogTitle,
+	FormControlLabel,
 	InputAdornment,
 	OutlinedInput,
 	Paper,
 	Snackbar,
 	Stack,
+	Switch,
 	Table,
 	TableBody,
 	TableCell,
@@ -52,6 +56,8 @@ export default function SchedulingPage(): React.JSX.Element {
 	const [modalMode, setModalMode] = React.useState<"create" | "edit">("create");
 
 	const [modalTime, setModalTime] = React.useState<string>("00:00");
+
+	const [modalEnabled, setModalEnabled] = React.useState<boolean>(true);
 
 	const [selectedScheduleId, setSelectedScheduleId] = React.useState<number | null>(null);
 
@@ -140,6 +146,7 @@ export default function SchedulingPage(): React.JSX.Element {
 		setSelectedScheduleId(null);
 
 		setModalTime("00:00");
+		setModalEnabled(true);
 
 		setModalOpen(true);
 	};
@@ -150,14 +157,14 @@ export default function SchedulingPage(): React.JSX.Element {
 
 	const handleOpenEditModal = (row: DeviceScheduleItem) => {
 		setModalMode("edit");
-
 		setSelectedScheduleId(row.id);
 
 		setModalTime(row.scheduledTime ? row.scheduledTime.substring(0, 5) : "00:00");
 
+		setModalEnabled(row.isEnabled);
+
 		setModalOpen(true);
 	};
-
 	// ============================================================
 	// CLOSE MODAL
 	// ============================================================
@@ -180,7 +187,7 @@ export default function SchedulingPage(): React.JSX.Element {
 
 		try {
 			const payload = {
-				isEnabled: true,
+				isEnabled: modalEnabled,
 				scheduledTime: modalTime,
 				repeatMode: "Daily",
 			};
@@ -551,26 +558,9 @@ export default function SchedulingPage(): React.JSX.Element {
 
 											<TableCell>
 												{row.isEnabled ? (
-													<Chip
-														size="small"	
-														label="Yes"
-														// color="success"
-														variant="outlined"
-														sx={{
-															fontWeight: 600,
-															height: 24,
-														}}
-													/>
+													<CheckIcon sx={{ color: "success.main", fontSize: 20 }} />
 												) : (
-													<Chip
-														size="small"
-														label="No"
-														color="default"
-														variant="outlined"
-														sx={{
-															height: 24,
-														}}
-													/>
+													<CloseIcon sx={{ color: "error.main", fontSize: 20 }} />
 												)}
 											</TableCell>
 											{/* NEXT RUN */}
@@ -682,6 +672,13 @@ export default function SchedulingPage(): React.JSX.Element {
 							}}
 							fullWidth
 							helperText="Select the daily time for automatic meter synchronization."
+						/>
+
+						<FormControlLabel
+							control={
+								<Switch checked={modalEnabled} onChange={(e) => setModalEnabled(e.target.checked)} color="primary" />
+							}
+							label={modalEnabled ? "Enabled" : "Disabled"}
 						/>
 					</Stack>
 				</DialogContent>

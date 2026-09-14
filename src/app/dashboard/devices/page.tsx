@@ -157,14 +157,29 @@ export default function Page(): React.JSX.Element {
 			// ---------------------------------------------
 
 			if (scheduledFilter) {
-				const isScheduled = device.deviceSyncSchedule != null && device.deviceSyncSchedule.isEnabled === true;
+				const isScheduled = device.deviceSyncSchedule != null;
 
-				if (scheduledFilter === "yes" && !isScheduled) {
-					return false;
+				const isEnabled = device.deviceSyncSchedule?.isEnabled === true;
+
+				// Scheduled + Enabled
+				if (scheduledFilter === "yes") {
+					if (!isScheduled || !isEnabled) {
+						return false;
+					}
 				}
 
-				if (scheduledFilter === "no" && isScheduled) {
-					return false;
+				// Scheduled + Disabled
+				if (scheduledFilter === "disabled") {
+					if (!isScheduled || isEnabled) {
+						return false;
+					}
+				}
+
+				// No Schedule
+				if (scheduledFilter === "no") {
+					if (isScheduled) {
+						return false;
+					}
 				}
 			}
 
@@ -326,7 +341,14 @@ export default function Page(): React.JSX.Element {
 
 			Status: connectionStatus[device.id] === true ? "Online" : "Offline",
 
-			Schedule: device.deviceSyncSchedule ? device.deviceSyncSchedule.scheduledTime : "No",
+			Schedule:
+				device.deviceSyncSchedule == null
+					? "No"
+					: device.deviceSyncSchedule.isEnabled
+						? device.deviceSyncSchedule.scheduledTime || "No"
+						: "Disabled",
+
+			IsActive: device.isActive,
 
 			IP: device.ip,
 
@@ -413,7 +435,7 @@ export default function Page(): React.JSX.Element {
 									<MenuItem>--Please choose an option--</MenuItem>
 									<MenuItem value="abt">ABT</MenuItem>
 
-									<MenuItem value="pq">PQ</MenuItem>
+									<MenuItem value="pqm">PQM</MenuItem>
 
 									<MenuItem value="both">Both</MenuItem>
 								</Select>
@@ -454,6 +476,7 @@ export default function Page(): React.JSX.Element {
 								>
 									<MenuItem>--Please choose an option--</MenuItem>
 									<MenuItem value="yes">Yes</MenuItem>
+									<MenuItem value="disabled">Disabled</MenuItem>
 
 									<MenuItem value="no">No</MenuItem>
 								</Select>
@@ -498,6 +521,10 @@ export default function Page(): React.JSX.Element {
 						setRowsPerPage(parseInt(event.target.value, 10));
 						setPage(0);
 					}}
+					onEdit={handleEdit}
+					onDelete={handleDelete}
+					onSyncNow={handleSyncNow}
+					syncingDeviceIds={syncingDeviceIds}
 					onSelectionChange={setSelectedDeviceIds}
 				/>
 

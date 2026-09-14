@@ -1,12 +1,19 @@
 import * as React from "react";
+import CheckIcon from "@mui/icons-material/Check";
+import CloseIcon from "@mui/icons-material/Close";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import SyncIcon from "@mui/icons-material/Sync";
 import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
 import Checkbox from "@mui/material/Checkbox";
 import Chip from "@mui/material/Chip";
+import Dialog from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import DialogTitle from "@mui/material/DialogTitle";
 import Divider from "@mui/material/Divider";
 import IconButton from "@mui/material/IconButton";
 import ListItemIcon from "@mui/material/ListItemIcon";
@@ -136,6 +143,9 @@ export function DevicesTable({
 
 	const [selectedDevice, setSelectedDevice] = React.useState<Device | null>(null);
 
+	// Delete dialog state
+	const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
+
 	const rowIds = React.useMemo(() => {
 		return rows.map((device) => device.id);
 	}, [rows]);
@@ -178,10 +188,25 @@ export function DevicesTable({
 		handleCloseMenu();
 	};
 	const handleDeleteClick = () => {
+		if (!selectedDevice) return;
+
+		setDeleteDialogOpen(true);
+		setMenuAnchorEl(null);
+	};
+
+	// Delete confirm function
+	const handleConfirmDelete = () => {
 		if (selectedDevice) {
 			onDelete(selectedDevice.id);
 		}
-		handleCloseMenu();
+
+		setDeleteDialogOpen(false);
+		setSelectedDevice(null);
+	};
+
+	// delete Cancel function
+	const handleCancelDelete = () => {
+		setDeleteDialogOpen(false);
 	};
 
 	const selectedDeviceIsSyncing = selectedDevice ? syncingDeviceIds.has(selectedDevice.id) : false;
@@ -222,6 +247,7 @@ export function DevicesTable({
 							<TableCell sx={{ fontWeight: 600 }}>Meter Type</TableCell>
 							<TableCell sx={{ fontWeight: 600 }}>Connection</TableCell>
 							<TableCell sx={{ fontWeight: 600 }}>Scheduled</TableCell>
+							<TableCell sx={{ fontWeight: 600 }}>IsActive</TableCell>
 							<TableCell sx={{ fontWeight: 600 }}>IP</TableCell>
 							<TableCell sx={{ fontWeight: 600 }}>Last Sync</TableCell>
 							<TableCell sx={{ fontWeight: 600 }} align="center">
@@ -301,11 +327,18 @@ export function DevicesTable({
 											/>
 										</TableCell>
 										<TableCell sx={{ whiteSpace: "nowrap" }}>
-											{row.deviceSyncSchedule?.isEnabled
-												? row.deviceSyncSchedule.scheduledTime
+											{row.deviceSyncSchedule
+												? row.deviceSyncSchedule?.isEnabled
 													? formatSchedTime(row.deviceSyncSchedule.scheduledTime)
-													: "Yes"
+													: "Disabled"
 												: "No"}
+										</TableCell>
+										<TableCell sx={{ whiteSpace: "nowrap" }}>
+											{row.isActive ? (
+												<CheckIcon sx={{ color: "success.main", fontSize: 20 }} />
+											) : (
+												<CloseIcon sx={{ color: "error.main", fontSize: 20 }} />
+											)}
 										</TableCell>
 										<TableCell sx={{ whiteSpace: "nowrap" }}>{row.ip}</TableCell>
 										<TableCell sx={{ whiteSpace: "nowrap" }}>
@@ -339,6 +372,11 @@ export function DevicesTable({
 				rowsPerPageOptions={[5, 10, 25]}
 				onPageChange={onPageChange}
 				onRowsPerPageChange={onRowsPerPageChange}
+				slotProps={{
+					select: {
+						native: true,
+					},
+				}}
 			/>
 
 			{/* Three-Dot Dropdown Menu - Exactly Two Options: Sync Now and Edit */}
@@ -369,6 +407,27 @@ export function DevicesTable({
 					<ListItemText>Delete</ListItemText>
 				</MenuItem>
 			</Menu>
+
+			{/* Dialog box */}
+			<Dialog open={deleteDialogOpen} onClose={handleCancelDelete} maxWidth="xs" fullWidth>
+				<DialogTitle sx={{ fontWeight: 600 }}>Delete Device</DialogTitle>
+
+				<DialogContent>
+					<Typography>
+						Are you sure you want to delete <strong>{selectedDevice?.name}</strong>?
+					</Typography>
+				</DialogContent>
+
+				<DialogActions sx={{ px: 3, py: 2 }}>
+					<Button onClick={handleCancelDelete} color="inherit">
+						Cancel
+					</Button>
+
+					<Button onClick={handleConfirmDelete} variant="contained" color="error">
+						Delete
+					</Button>
+				</DialogActions>
+			</Dialog>
 		</Card>
 	);
 }

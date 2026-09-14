@@ -438,10 +438,40 @@ export function AddDeviceForm({
 			}
 
 			if (!result?.status) {
-				setErrors((prev) => ({
-					...prev,
-					general: result?.errors || "Failed to save device",
-				}));
+				const backendError = result?.errors?.[0] || "Something went wrong";
+
+				const errorLower = backendError.toLowerCase();
+
+				if (errorLower.includes("name")) {
+					setErrors((prev) => ({
+						...prev,
+						name: backendError,
+						general: "",
+					}));
+				} else if (errorLower.includes("serialnumber")) {
+					setErrors((prev) => ({
+						...prev,
+						serialNo: backendError,
+						general: "",
+					}));
+				} else if (errorLower.includes("consumernumber")) {
+					setErrors((prev) => ({
+						...prev,
+						consumerNo: backendError,
+						general: "",
+					}));
+				} else if (errorLower.includes(" ip ")) {
+					setErrors((prev) => ({
+						...prev,
+						ip: backendError,
+						general: "",
+					}));
+				} else {
+					setErrors((prev) => ({
+						...prev,
+						general: backendError,
+					}));
+				}
 
 				return;
 			}
