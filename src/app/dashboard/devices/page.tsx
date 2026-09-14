@@ -238,7 +238,7 @@ export default function Page(): React.JSX.Element {
 			if (res && res.status) {
 				setDevices((prev) => prev.filter((d) => d.id !== deviceId));
 
-				setSnackbarMessage(`Device ${deviceId} soft-deleted successfully.`);
+				setSnackbarMessage(`Device deleted successfully.`);
 
 				setSnackbarSeverity("success");
 				setSnackbarOpen(true);
