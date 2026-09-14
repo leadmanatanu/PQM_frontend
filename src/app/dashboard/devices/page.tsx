@@ -47,6 +47,9 @@ export default function Page(): React.JSX.Element {
 	const [page, setPage] = useState(0);
 	const [rowsPerPage, setRowsPerPage] = useState(10);
 
+	const [selectedDeviceIds, setSelectedDeviceIds] = useState<Set<number>>(new Set());
+	// const { connectionStatus } = useDeviceConnectionStatus(deviceIds);
+
 	// ---------------------------------------------------------
 	// Fetch devices
 	// ---------------------------------------------------------
@@ -307,20 +310,43 @@ export default function Page(): React.JSX.Element {
 	// ---------------------------------------------------------
 
 	const handleExport = () => {
-		const data = (devices ?? []).map((device) => ({
+		const devicesToExport =
+			selectedDeviceIds.size === 0 ? devices : devices.filter((device) => selectedDeviceIds.has(device.id));
+
+		const data = devicesToExport.map((device) => ({
 			ID: device.id,
 
 			Name: device.name,
 
-			"Serial No": device.serialNumber,
-
 			"Consumer No": device.consumerNumber,
 
-			Status: device.isActive ? "Active" : "Inactive",
+			"Serial No": device.serialNumber,
+
+			"Meter Type": device.meterType?.name,
+
+			Status: connectionStatus[device.id] === true ? "Online" : "Offline",
+
+			Schedule: device.deviceSyncSchedule ? device.deviceSyncSchedule.scheduledTime : "No",
 
 			IP: device.ip,
 
-			"Created Date": device.createdDate || "",
+			"Created Date": device.createdAt
+				? new Date(device.createdAt).toLocaleString("en-IN", {
+						day: "2-digit",
+						month: "2-digit",
+						year: "numeric",
+					})
+				: "",
+
+			"Last Sync": device.lastSync
+				? new Date(device.lastSync).toLocaleString("en-IN", {
+						day: "2-digit",
+						month: "2-digit",
+						year: "numeric",
+						hour: "2-digit",
+						minute: "2-digit",
+					})
+				: "Not Run",
 		}));
 
 		const worksheet = XLSX.utils.json_to_sheet(data);
@@ -472,6 +498,7 @@ export default function Page(): React.JSX.Element {
 						setRowsPerPage(parseInt(event.target.value, 10));
 						setPage(0);
 					}}
+					onSelectionChange={setSelectedDeviceIds}
 				/>
 
 				<AddDeviceForm

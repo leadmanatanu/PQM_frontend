@@ -5,6 +5,7 @@ import MoreVertIcon from "@mui/icons-material/MoreVert";
 import SyncIcon from "@mui/icons-material/Sync";
 import Box from "@mui/material/Box";
 import Card from "@mui/material/Card";
+import Checkbox from "@mui/material/Checkbox";
 import Chip from "@mui/material/Chip";
 import Divider from "@mui/material/Divider";
 import IconButton from "@mui/material/IconButton";
@@ -37,7 +38,7 @@ export interface Device {
 
 	isDeleted?: boolean | string;
 
-	createdDate?: Date;
+	createdAt?: Date;
 
 	createdId?: number;
 
@@ -110,6 +111,8 @@ interface DevicesTableProps {
 	onSyncNow?: (deviceId: number) => void;
 	onToggleActive?: (deviceId: number, newActiveState: boolean) => void;
 	syncingDeviceIds?: Set<number>;
+
+	onSelectionChange?: (selectedIds: Set<number>) => void;
 }
 
 export function DevicesTable({
@@ -126,6 +129,8 @@ export function DevicesTable({
 	onDelete = () => {},
 	onSyncNow = () => {},
 	syncingDeviceIds = new Set<number>(),
+
+	onSelectionChange = () => {},
 }: DevicesTableProps): React.JSX.Element | null {
 	const [menuAnchorEl, setMenuAnchorEl] = React.useState<HTMLElement | null>(null);
 
@@ -181,12 +186,36 @@ export function DevicesTable({
 
 	const selectedDeviceIsSyncing = selectedDevice ? syncingDeviceIds.has(selectedDevice.id) : false;
 
+	//checkbox uses
+	const [selectedDeviceIds, setSelectedDeviceIds] = React.useState<Set<number>>(new Set());
+
 	return (
 		<Card sx={{ borderRadius: "8px" }}>
 			<Box sx={{ overflowX: "auto", maxHeight: "500px", overflowY: "auto" }}>
 				<Table size="small" sx={{ width: "100%" }}>
 					<TableHead sx={{ bgcolor: "var(--mui-palette-neutral-50)" }}>
 						<TableRow>
+							<TableCell padding="checkbox">
+								<Checkbox
+									checked={rows.length > 0 && rows.every((row) => selectedDeviceIds.has(row.id))}
+									indeterminate={
+										rows.some((row) => selectedDeviceIds.has(row.id)) &&
+										!rows.every((row) => selectedDeviceIds.has(row.id))
+									}
+									onChange={(event) => {
+										const next = new Set(selectedDeviceIds);
+
+										if (event.target.checked) {
+											rows.forEach((row) => next.add(row.id));
+										} else {
+											rows.forEach((row) => next.delete(row.id));
+										}
+
+										setSelectedDeviceIds(next);
+										onSelectionChange(next);
+									}}
+								/>
+							</TableCell>
 							<TableCell sx={{ fontWeight: 600 }}>Name</TableCell>
 							<TableCell sx={{ fontWeight: 600 }}>Serial No</TableCell>
 							<TableCell sx={{ fontWeight: 600 }}>Consumer No</TableCell>
@@ -241,6 +270,23 @@ export function DevicesTable({
 
 								return (
 									<TableRow hover key={row.id} selected={isSelected}>
+										<TableCell padding="checkbox">
+											<Checkbox
+												checked={selectedDeviceIds.has(row.id)}
+												onChange={(event) => {
+													const next = new Set(selectedDeviceIds);
+
+													if (event.target.checked) {
+														next.add(row.id);
+													} else {
+														next.delete(row.id);
+													}
+
+													setSelectedDeviceIds(next);
+													onSelectionChange(next);
+												}}
+											/>
+										</TableCell>
 										<TableCell sx={{ whiteSpace: "nowrap", fontWeight: 600 }}>{row.name}</TableCell>
 										<TableCell sx={{ whiteSpace: "nowrap" }}>{row.serialNumber}</TableCell>
 										<TableCell sx={{ whiteSpace: "nowrap" }}>{row.consumerNumber}</TableCell>
