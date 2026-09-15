@@ -700,11 +700,12 @@ export function AddDeviceForm({
 									labelId="schedule-label"
 									id="schedule"
 									name="schedule"
-									value={selectedScheduleId ?? ""}
+									value={selectedScheduleId ?? 0}
 									label="Schedule"
 									onChange={handleScheduleChange}
 									displayEmpty
 								>
+									<MenuItem value="0">No Schedule</MenuItem>
 									{schedules
 										.filter((schedule) => schedule.isEnabled)
 										.map((schedule) => (

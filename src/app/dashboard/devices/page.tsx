@@ -504,12 +504,12 @@ export default function Page(): React.JSX.Element {
 								onClick={handleClearFilters}
 								sx={{
 									minWidth: { xs: "110px", sm: 100 },
-									height: 34,
 									whiteSpace: "nowrap",
 									color: "gray",
+									borderColor: "#c2c2c2",
 									"&:hover": {
 										color: "black",
-										borderColor: "black",
+										borderColor: "#212636",
 									},
 								}}
 							>

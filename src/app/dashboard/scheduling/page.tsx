@@ -596,9 +596,26 @@ export default function SchedulingPage(): React.JSX.Element {
 														label={row.lastRunStatus}
 														color={row.lastRunStatus === "Success" ? "success" : "error"}
 														variant="outlined"
+														sx={{
+															height: 24,
+															"& .MuiChip-label": {
+																padding: "2px 5px",
+															},
+														}}
 													/>
 												) : (
-													<Chip size="small" label="Not Run" color="default" variant="outlined" />
+													<Chip
+														size="small"
+														label="Not Run"
+														color="default"
+														variant="outlined"
+														sx={{
+															height: 24,
+															"& .MuiChip-label": {
+																padding: "2px 5px",
+															},
+														}}
+													/>
 												)}
 											</TableCell>
 
@@ -609,6 +626,11 @@ export default function SchedulingPage(): React.JSX.Element {
 													variant="outlined"
 													color="primary"
 													size="small"
+													sx={{
+														minWidth: 0,
+														height: 24,
+														padding: "2px 8px",
+													}}
 													onClick={() => handleOpenEditModal(row)}
 												>
 													Edit
@@ -617,7 +639,12 @@ export default function SchedulingPage(): React.JSX.Element {
 													variant="outlined"
 													color="error"
 													size="small"
-													sx={{ ml: 1 }}
+													sx={{
+														minWidth: 0,
+														height: 24,
+														padding: "2px 5px",
+														ml: 1,
+													}}
 													onClick={() => handleOpenDeleteDialog(row)}
 												>
 													Delete

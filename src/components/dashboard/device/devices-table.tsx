@@ -323,7 +323,15 @@ export function DevicesTable({
 												color={statusColor}
 												size="small"
 												variant={statusVariant}
-												sx={{ fontWeight: 600, minWidth: 80, textAlign: "center" }}
+												sx={{
+													fontWeight: 600,
+													minWidth: 80,
+													textAlign: "center",
+													height: 24,
+													"& .MuiChip-label": {
+														padding: "2px 5px",
+													},
+												}}
 											/>
 										</TableCell>
 										<TableCell sx={{ whiteSpace: "nowrap" }}>
