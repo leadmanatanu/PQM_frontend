@@ -1,28 +1,28 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
 import CheckBoxIcon from "@mui/icons-material/CheckBox";
 import CheckBoxOutlineBlankIcon from "@mui/icons-material/CheckBoxOutlineBlank";
-import SearchIcon from "@mui/icons-material/Search";
 import {
 	Autocomplete,
-	Box,
 	Button,
 	Card,
 	CardContent,
-	CircularProgress,
 	FormControl,
 	Grid,
+	Popover,
 	Stack,
-	TextField,
-	Tooltip,
-	Typography,
+	TextField
 } from "@mui/material";
 import Checkbox from "@mui/material/Checkbox";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
-import { DateTimePicker } from "@mui/x-date-pickers/DateTimePicker";
+// import { DateTimePicker } from "@mui/x-date-pickers/DateTimePicker";
+import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
+import ClearIcon from "@mui/icons-material/Clear";
+import { DateCalendar } from "@mui/x-date-pickers/DateCalendar";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
+import { PickersDay } from "@mui/x-date-pickers/PickersDay";
 import dayjs, { Dayjs } from "dayjs";
+import React, { useEffect, useState } from "react";
 
 import type { Device } from "../../../components/dashboard/device/devices-table";
 import type { ProfileItem } from "../../../services/profile.service";
@@ -82,8 +82,26 @@ export function ReportFilters({
 	const [intervalMinutes, setIntervalMinutes] = useState<number>(15);
 
 	// Single consolidated Date-Time range (From / To)
-	const [fromValue, setFromValue] = useState<Dayjs | null>(dayjs().subtract(30, "days").startOf("day"));
-	const [toValue, setToValue] = useState<Dayjs | null>(dayjs().endOf("day"));
+	const today = dayjs();
+	const [fromValue, setFromValue] = useState<Dayjs | null>(today.startOf("day"));
+	const [toValue, setToValue] = useState<Dayjs | null>(today.endOf("day"));
+	const [rangeStart, setRangeStart] = useState<Dayjs | null>(today);
+	const [rangeEnd, setRangeEnd] = useState<Dayjs | null>(today);
+	const [dateRangeAnchor, setDateRangeAnchor] = useState<HTMLElement | null>(null);
+
+	const handleDateSelect = (date: Dayjs | null) => {
+	if (!date) return;
+
+	if (!rangeStart || rangeEnd) {
+		setRangeStart(date);
+		setRangeEnd(null);
+	} else if (date.isBefore(rangeStart, "day")) {
+		setRangeStart(date);
+		setRangeEnd(null);
+	} else {
+		setRangeEnd(date);
+	}
+};
 
 	// Sync selectedDevice with prop changes
 	useEffect(() => {
@@ -144,6 +162,32 @@ export function ReportFilters({
 		onProfileSelect(newValue ? newValue.id : null);
 	};
 
+	const handleClearFilters = () => {
+	const today = dayjs();
+
+	setSelectedDevice(null);
+	setSelectedProfile(null);
+	setObjectType("All");
+	setSelectedParams([]);
+	setIntervalMinutes(15);
+
+	// Reset date range to today
+	setFromValue(today.startOf("day"));
+	setToValue(today.endOf("day"));
+
+	setRangeStart(today);
+	setRangeEnd(today);
+
+	setDateRangeAnchor(null);
+
+	setErrors({
+		device: false,
+		from: false,
+		to: false,
+		dateInverted: false,
+	});
+};
+
 	const handleSearch = () => {
 		const isDeviceMissing = !selectedDevice;
 		const isFromMissing = !fromValue;
@@ -185,7 +229,7 @@ export function ReportFilters({
 			<CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
 				<Grid container spacing={1.5}>
 					{/* Row 1: Device, Profile, From (DateTime), To (DateTime) */}
-					<Grid size={{ xs: 12, md: 3 }}>
+					<Grid size={{ xs: 12, md: 4 }}>
 						<FormControl fullWidth size="small">
 							<Autocomplete
 								id="report-device-autocomplete"
@@ -210,7 +254,7 @@ export function ReportFilters({
 						</FormControl>
 					</Grid>
 
-					<Grid size={{ xs: 12, md: 3 }}>
+					<Grid size={{ xs: 12, md: 4 }}>
 						<FormControl fullWidth size="small">
 							<Autocomplete
 								id="report-profile-autocomplete"
@@ -235,49 +279,98 @@ export function ReportFilters({
 					</Grid>
 
 					<LocalizationProvider dateAdapter={AdapterDayjs}>
-						<Grid size={{ xs: 12, md: 3 }}>
-							<DateTimePicker
-								label="From"
-								value={fromValue}
-								onChange={(newValue) => setFromValue(newValue)}
-								slotProps={{
-									textField: {
-										size: "small",
-										fullWidth: true,
-										error: errors.from,
-										helperText: errors.dateInverted
-											? "From cannot be after To"
-											: errors.from
-												? "From date & time is required"
-												: "",
-									},
-								}}
-							/>
-						</Grid>
+	<Grid size={{ xs: 12, md: 4 }}>
+		<TextField
+	label="Date Range"
+	value={
+		fromValue && toValue
+			? `${fromValue.format("DD-MM-YYYY")} → ${toValue.format("DD-MM-YYYY")}`
+			: ""
+	}
+	placeholder="Select date range"
+	size="small"
+	fullWidth
+	onClick={(e) => {
+		setRangeStart(fromValue);
+		setRangeEnd(toValue);
+		setDateRangeAnchor(e.currentTarget);
+	}}
+	InputProps={{
+		readOnly: true,
+		endAdornment:
+			fromValue && toValue ? (
+				<ClearIcon
+					sx={{ cursor: "pointer" }}
+					onClick={(e) => {
+						e.stopPropagation();
+						setFromValue(null);
+						setToValue(null);
+						setRangeStart(null);
+						setRangeEnd(null);
+					}}
+				/>
+			) : (
+				<CalendarMonthIcon />
+			),
+	}}
+/>
+		<Popover
+			open={Boolean(dateRangeAnchor)}
+			anchorEl={dateRangeAnchor}
+			onClose={() => setDateRangeAnchor(null)}
+			anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
+		>
+			<Stack sx={{ p: 1.5, width: 320 }}>
+				<DateCalendar
+	value={rangeEnd || rangeStart}
+	onChange={handleDateSelect}
+	slots={{
+		day: (props) => {
+			const selected = props.day.isSame(rangeStart, "day") || props.day.isSame(rangeEnd, "day");
+			const today = props.day.isSame(dayjs(), "day");
 
-						<Grid size={{ xs: 12, md: 3 }}>
-							<DateTimePicker
-								label="To"
-								value={toValue}
-								onChange={(newValue) => setToValue(newValue)}
-								slotProps={{
-									textField: {
-										size: "small",
-										fullWidth: true,
-										error: errors.to,
-										helperText: errors.dateInverted
-											? "To must be after From"
-											: errors.to
-												? "To date & time is required"
-												: "",
-									},
-								}}
-							/>
-						</Grid>
-					</LocalizationProvider>
-
+			return (
+				<PickersDay
+					{...props}
+					sx={{
+						...(today && !selected && {
+							border: "1px solid",
+							borderColor: "primary.main"
+						}),
+						...(selected && {
+							backgroundColor: "primary.main",
+							color: "common.white",
+							"&:hover": { backgroundColor: "primary.dark" }
+						})
+					}}
+				/>
+			);
+		}
+	}}
+/>
+				<Stack direction="row" justifyContent="flex-end" spacing={1}>
+					<Button size="small" onClick={() => setDateRangeAnchor(null)}>
+						Cancel
+					</Button>
+					<Button
+						size="small"
+						variant="contained"
+						disabled={!rangeStart || !rangeEnd}
+						onClick={() => {
+							setFromValue(rangeStart?.startOf("day") || null);
+							setToValue(rangeEnd?.endOf("day") || null);
+							setDateRangeAnchor(null);
+						}}
+					>
+						Apply
+					</Button>
+				</Stack>
+			</Stack>
+		</Popover>
+	</Grid>
+</LocalizationProvider>
 					{/* Row 2: Parameters Autocomplete, Action Buttons */}
-					<Grid size={{ xs: 12, md: 8 }}>
+					<Grid size={{ xs: 12, md: 7.5 }}>
 						<FormControl fullWidth size="small">
 							<Autocomplete
 								multiple
@@ -321,8 +414,16 @@ export function ReportFilters({
 						</FormControl>
 					</Grid>
 
-					<Grid size={{ xs: 12, md: 4 }}>
+					<Grid size={{ xs: 12, md: 4.5 }}>
 						<Stack direction="row" spacing={1.5} justifyContent="flex-end" alignItems="center">
+							<Button
+								variant="outlined"
+								color="secondary"
+								onClick={handleClearFilters}
+								sx={{ height: 38, px: 2, textTransform: "none", fontWeight: 600 }}
+							>
+								Clear Filter
+							</Button>
 							<Button
 								variant="outlined"
 								color="secondary"
@@ -337,12 +438,11 @@ export function ReportFilters({
 								variant="contained"
 								color="primary"
 								size="small"
-								startIcon={isSearching ? <CircularProgress size={16} color="inherit" /> : <SearchIcon />}
 								onClick={handleSearch}
 								disabled={isSearching}
 								sx={{ height: 38, px: 3, textTransform: "none", fontWeight: 600 }}
 							>
-								{isSearching ? "Searching..." : "Search"}
+								Search
 							</Button>
 						</Stack>
 					</Grid>
