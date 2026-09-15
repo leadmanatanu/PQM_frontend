@@ -1,25 +1,22 @@
 "use client";
 
-import { profile } from "console";
 
-import React, { useEffect, useRef, useState } from "react";
 import CheckBoxIcon from "@mui/icons-material/CheckBox";
 import CheckBoxOutlineBlankIcon from "@mui/icons-material/CheckBoxOutlineBlank";
-import SearchIcon from "@mui/icons-material/Search";
 import {
 	Autocomplete,
 	Button,
 	Card,
 	CardContent,
 	Chip,
-	CircularProgress,
 	FormControl,
 	Grid,
 	Stack,
 	TextField,
-	Typography,
+	Typography
 } from "@mui/material";
 import Checkbox from "@mui/material/Checkbox";
+import React, { useEffect, useRef, useState } from "react";
 
 import type { Device } from "../../../components/dashboard/device/devices-table";
 import type { ProfileItem } from "../../../services/profile.service";
@@ -307,14 +304,14 @@ export function DeviceFilters({
 								variant="contained"
 								color="primary"
 								size="medium"
-								startIcon={
-									isScanning ? <CircularProgress size={16} color="inherit" /> : <SearchIcon fontSize="small" />
-								}
+								// startIcon={
+								// 	isScanning ? <CircularProgress size={16} color="inherit" /> : <SearchIcon fontSize="small" />
+								// }
 								onClick={handleScanClick}
 								disabled={isScanning}
 								sx={{ height: 38, minWidth: 120, px: 2.5, fontWeight: 600, fontSize: "0.8125rem", flexShrink: 0 }}
 							>
-								{isScanning ? "Scanning..." : "Scan"}
+								Scan
 							</Button>
 						</Stack>
 					</Grid>

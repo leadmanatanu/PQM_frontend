@@ -2,13 +2,11 @@
 
 import CheckBoxIcon from "@mui/icons-material/CheckBox";
 import CheckBoxOutlineBlankIcon from "@mui/icons-material/CheckBoxOutlineBlank";
-import SearchIcon from "@mui/icons-material/Search";
 import {
 	Autocomplete,
 	Button,
 	Card,
 	CardContent,
-	CircularProgress,
 	FormControl,
 	Grid,
 	Popover,
@@ -440,12 +438,11 @@ export function ReportFilters({
 								variant="contained"
 								color="primary"
 								size="small"
-								startIcon={isSearching ? <CircularProgress size={16} color="inherit" /> : <SearchIcon />}
 								onClick={handleSearch}
 								disabled={isSearching}
 								sx={{ height: 38, px: 3, textTransform: "none", fontWeight: 600 }}
 							>
-								{isSearching ? "Searching..." : "Search"}
+								Search
 							</Button>
 						</Stack>
 					</Grid>
