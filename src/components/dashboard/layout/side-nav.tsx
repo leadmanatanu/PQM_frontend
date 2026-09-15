@@ -11,6 +11,9 @@ import { GearSix as GearSixIcon } from "@phosphor-icons/react/dist/ssr/GearSix";
 import { SignOut as SignOutIcon } from "@phosphor-icons/react/dist/ssr/SignOut";
 import { User as UserIcon } from "@phosphor-icons/react/dist/ssr/User";
 
+import { CaretLeft as CaretLeftIcon } from "@phosphor-icons/react/dist/ssr/CaretLeft";
+import { CaretRight as CaretRightIcon } from "@phosphor-icons/react/dist/ssr/CaretRight";
+
 import { Logo } from "../../../components/core/logo";
 import RouterLink from "../../../components/RouterLink";
 import { useUser } from "../../../hooks/use-user";
@@ -23,7 +26,12 @@ import type { NavItemConfig } from "../../../types/nav";
 import { navItems } from "./config";
 import { navIcons } from "./nav-icons";
 
-export function SideNav(): React.JSX.Element {
+interface SideNavProps {
+	collapsed: boolean;
+	onToggle: () => void;
+}
+
+export function SideNav({ collapsed, onToggle }: SideNavProps): React.JSX.Element {
 	const pathname = usePathname();
 	const router = useRouter();
 	const { user, checkSession } = useUser();
@@ -71,29 +79,35 @@ export function SideNav(): React.JSX.Element {
 				position: "fixed",
 				scrollbarWidth: "none",
 				top: 0,
-				width: "var(--SideNav-width)",
+				width: collapsed ? "72px" : "var(--SideNav-width)",
+        transition: "width 0.25s ease-in-out",
+        overflow: "hidden",
 				zIndex: "var(--SideNav-zIndex)",
 				"&::-webkit-scrollbar": { display: "none" },
 			}}
 		>
-			<Stack direction="row" alignItems="center" sx={{ height: "var(--MainNav-height, 52px)", px: 2.5 }}>
-				<Box component={RouterLink} href={paths.home} sx={{ display: "inline-flex" }}>
-					<Logo color="light" height={28} width={108} />
-				</Box>
-			</Stack>
+			<Stack direction="row" alignItems="center" justifyContent={collapsed ? "center" : "space-between"} sx={{ height: "var(--MainNav-height, 52px)", px: collapsed ? 1 : 2.5, position: "relative" }}>
+	<Box component={RouterLink} href={paths.home} sx={{ display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+		<Logo color="light" emblem={collapsed} height={28} width={collapsed ? 28 : 108} />
+	</Box>
+
+	<Box component="button" onClick={onToggle} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} sx={{ display: "flex", alignItems: "center", justifyContent: "center", width: 28, height: 28, border: "none", borderRadius: "6px", background: "transparent", color: "var(--mui-palette-neutral-400)", cursor: "pointer", position: collapsed ? "absolute" : "static", right: collapsed ? 6 : undefined, top: collapsed ? 12 : undefined, flexShrink: 0, "&:hover": { backgroundColor: "rgba(255, 255, 255, 0.08)", color: "var(--mui-palette-common-white)" } }}>
+		{collapsed ? <CaretRightIcon size={18} /> : <CaretLeftIcon size={18} />}
+	</Box>
+</Stack>
 			<Divider sx={{ borderColor: "var(--mui-palette-neutral-800)" }} />
 			<Box component="nav" sx={{ flex: "1 1 auto", px: 1.5, py: 2 }}>
-				{renderNavItems({ pathname, items: navItems })}
+				{renderNavItems({ pathname, items: navItems, collapsed })}
 			</Box>
 		</Box>
 	);
 }
 
-function renderNavItems({ items = [], pathname }: { items?: NavItemConfig[]; pathname: string }): React.JSX.Element {
+function renderNavItems({ items = [], pathname, collapsed }: { items?: NavItemConfig[]; pathname: string; collapsed: boolean }): React.JSX.Element {
 	const children = items.reduce((acc: React.ReactNode[], curr: NavItemConfig): React.ReactNode[] => {
 		const { key, ...item } = curr;
 
-		acc.push(<NavItem key={key} pathname={pathname} {...item} />);
+		acc.push(<NavItem key={key} pathname={pathname} collapsed={collapsed} {...item} />);
 
 		return acc;
 	}, []);
@@ -107,9 +121,10 @@ function renderNavItems({ items = [], pathname }: { items?: NavItemConfig[]; pat
 
 interface NavItemProps extends Omit<NavItemConfig, "items"> {
 	pathname: string;
+  collapsed: boolean;
 }
 
-function NavItem({ disabled, external, href, icon, matcher, pathname, title }: NavItemProps): React.JSX.Element {
+function NavItem({ disabled, external, href, icon, matcher, pathname, title, collapsed }: NavItemProps): React.JSX.Element {
 	const active = isNavItemActive({ disabled, external, href, matcher, pathname });
 	const Icon = icon ? navIcons[icon] : null;
 
@@ -131,8 +146,9 @@ function NavItem({ disabled, external, href, icon, matcher, pathname, title }: N
 					cursor: "pointer",
 					display: "flex",
 					flex: "0 0 auto",
-					gap: 1.5,
-					p: "8px 14px",
+					gap: collapsed ? 0 : 1.5,
+					justifyContent: collapsed ? "center" : "flex-start",
+					p: collapsed ? "10px 0" : "8px 14px",
 					position: "relative",
 					textDecoration: "none",
 					whiteSpace: "nowrap",
@@ -156,32 +172,28 @@ function NavItem({ disabled, external, href, icon, matcher, pathname, title }: N
 					}),
 				}}
 			>
-				<Box
-					sx={{
-						alignItems: "center",
-						display: "flex",
-						justifyContent: "center",
-						flex: "0 0 auto",
-						width: 20,
-						height: 20,
-					}}
-				>
-					{Icon ? (
-						<Icon
-							fill={active ? "var(--NavItem-icon-active-color)" : "var(--NavItem-icon-color)"}
-							fontSize="20px"
-							weight={active ? "fill" : undefined}
-						/>
-					) : null}
-				</Box>
-				<Box sx={{ flex: "1 1 auto" }}>
-					<Typography
-						component="span"
-						sx={{ color: "inherit", fontSize: "0.875rem", fontWeight: active ? 600 : 500, lineHeight: "24px" }}
-					>
-						{title}
-					</Typography>
-				</Box>
+				{!collapsed && (
+					<Box sx={{ flex: "1 1 auto" }}>
+						<Typography
+							component="span"
+							sx={{
+								color: "inherit",
+								fontSize: "0.875rem",
+								fontWeight: active ? 600 : 500,
+								lineHeight: "24px",
+							}}
+						>
+							{title}
+						</Typography>
+					</Box>
+				)}
+				{Icon ? (
+					<Icon
+						fill={active ? "var(--NavItem-icon-active-color)" : "var(--NavItem-icon-color)"}
+						fontSize="20px"
+						weight={active ? "fill" : undefined}
+					/>
+				) : null}
 			</Box>
 		</li>
 	);

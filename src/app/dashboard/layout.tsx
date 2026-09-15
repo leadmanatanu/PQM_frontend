@@ -9,6 +9,7 @@ import { MainNav } from "../../components/dashboard/layout/main-nav";
 import { SideNav } from "../../components/dashboard/layout/side-nav";
 
 export default function Layout(): React.JSX.Element {
+	const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
 	return (
 		<AuthGuard>
 			<GlobalStyles
@@ -16,7 +17,7 @@ export default function Layout(): React.JSX.Element {
 					body: {
 						"--MainNav-height": "52px",
 						"--MainNav-zIndex": 1000,
-						"--SideNav-width": "240px",
+						"--SideNav-width": sidebarCollapsed ? "72px" : "240px",
 						"--SideNav-zIndex": 1100,
 						"--MobileNav-width": "270px",
 						"--MobileNav-zIndex": 1100,
@@ -32,7 +33,7 @@ export default function Layout(): React.JSX.Element {
 					minHeight: "100%",
 				}}
 			>
-				<SideNav />
+				<SideNav collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed((prev) => !prev)} />
 				<Box sx={{ display: "flex", flex: "1 1 auto", flexDirection: "column", pl: { lg: "var(--SideNav-width)" } }}>
 					<MainNav />
 					<main>
