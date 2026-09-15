@@ -22,7 +22,7 @@ export function Logo({ color = "dark", emblem, height = HEIGHT, width = WIDTH }:
 	let url: string;
 
 	if (emblem) {
-		url = color === "light" ? "/assets/logo-emblem.svg" : "/assets/logo-emblem--dark.svg";
+		url = color === "light" ? "/assets/PQM_icon.png" : "/assets/logo-emblem--dark.svg";
 	} else {
 		url = color === "light" ? "/assets/PQM_logo1.png" : "/assets/logo--dark.svg";
 	}
