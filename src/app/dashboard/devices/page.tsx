@@ -187,6 +187,15 @@ export default function Page(): React.JSX.Element {
 		});
 	}, [devices, searchQuery, meterTypeFilter, connectionFilter, scheduledFilter, connectionStatus]);
 
+	// handle- Clear Filters
+	const handleClearFilters = () => {
+		setSearchQuery("");
+		setMeterTypeFilter("");
+		setConnectionFilter("");
+		setScheduledFilter("");
+		setPage(0);
+	};
+
 	// ---------------------------------------------------------
 	// Reset page when filter/search changes
 	// ---------------------------------------------------------
@@ -394,6 +403,9 @@ export default function Page(): React.JSX.Element {
 					alignItems="center"
 					sx={{
 						width: "100%",
+						flexWrap: "wrap",
+						overflow: "auto",
+						padding: "7px",
 					}}
 				>
 					{isVisible ? (
@@ -402,13 +414,17 @@ export default function Page(): React.JSX.Element {
 							spacing={1.5}
 							alignItems="center"
 							sx={{
-								flex: 1,
+								flex: "1 1 auto",
 								minWidth: 0,
+
+								"@media (max-width: 994px)": {
+									width: "100%",
+								},
 							}}
 						>
 							{/* Search */}
 
-							<Box sx={{ width: 300 }}>
+							<Box sx={{ minWidth: 250 }}>
 								<DevicesFilters
 									show={isVisible}
 									value={searchQuery}
@@ -421,7 +437,7 @@ export default function Page(): React.JSX.Element {
 
 							{/* Meter Type */}
 
-							<FormControl size="small" sx={{ minWidth: 140 }}>
+							<FormControl size="small" sx={{ minWidth: 115 }}>
 								<InputLabel>Meter Type</InputLabel>
 
 								<Select
@@ -443,7 +459,7 @@ export default function Page(): React.JSX.Element {
 
 							{/* Connection */}
 
-							<FormControl size="small" sx={{ minWidth: 140 }}>
+							<FormControl size="small" sx={{ minWidth: 115 }}>
 								<InputLabel>Connection</InputLabel>
 
 								<Select
@@ -463,7 +479,7 @@ export default function Page(): React.JSX.Element {
 
 							{/* Scheduled */}
 
-							<FormControl size="small" sx={{ minWidth: 130 }}>
+							<FormControl size="small" sx={{ minWidth: 115 }}>
 								<InputLabel>Scheduled</InputLabel>
 
 								<Select
@@ -481,13 +497,45 @@ export default function Page(): React.JSX.Element {
 									<MenuItem value="no">No</MenuItem>
 								</Select>
 							</FormControl>
+
+							{/* Clear All Filters */}
+							<Button
+								variant="outlined"
+								onClick={handleClearFilters}
+								sx={{
+									minWidth: { xs: "110px", sm: 100 },
+									height: 34,
+									whiteSpace: "nowrap",
+									color: "gray",
+									"&:hover": {
+										color: "black",
+										borderColor: "black",
+									},
+								}}
+							>
+								Clear Filters
+							</Button>
 						</Stack>
 					) : (
 						<Box />
 					)}
 
 					{isVisible && (
-						<Stack direction="row" spacing={1.5} alignItems="center">
+						<Stack
+							direction="row"
+							spacing={1.5}
+							alignItems="center"
+							sx={{
+								ml: "auto",
+
+								"@media (max-width: 994px)": {
+									width: "100%",
+									flexBasis: "100%",
+									justifyContent: "flex-start",
+									ml: 0,
+								},
+							}}
+						>
 							<div>
 								<Button
 									startIcon={<PlusIcon fontSize="var(--icon-fontSize-md)" />}
