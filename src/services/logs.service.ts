@@ -50,7 +50,7 @@ export const fetchDeviceReading = async (
 // Fetch aggregated report readings (5, 15, 30 min intervals)
 export const fetchAggregatedReport = async (
 	deviceId?: string | number | null,
-	profileId?: string | number | null,
+	 profileIds?: number[],
 	objectType?: string | null,
 	parameterIds?: (string | number)[] | null,
 	startDate?: string,
@@ -62,7 +62,9 @@ export const fetchAggregatedReport = async (
 	try {
 		const params: Record<string, any> = { pageNumber, pageSize, intervalMinutes };
 		if (deviceId && Number(deviceId) > 0) params.deviceId = deviceId;
-		if (profileId && Number(profileId) > 0) params.profileId = profileId;
+		if (profileIds && profileIds.length > 0) {
+    params.profileIds = profileIds.map(Number).filter((id) => id > 0);
+}
 		if (objectType && objectType !== "All") params.objectType = objectType;
 		if (startDate) params.startDate = startDate;
 		if (endDate) params.endDate = endDate;
@@ -121,7 +123,7 @@ export const exportDeviceReading = (
 // Trigger export of aggregated report (Excel)
 export const exportAggregatedReport = (
 	deviceId?: string | number | null,
-	profileId?: string | number | null,
+	profileIds?: number[],
 	objectType?: string | null,
 	parameterIds?: (string | number)[] | null,
 	startDate?: string,
@@ -130,7 +132,13 @@ export const exportAggregatedReport = (
 ): void => {
 	const params = new URLSearchParams();
 	if (deviceId && Number(deviceId) > 0) params.append("deviceId", String(deviceId));
-	if (profileId && Number(profileId) > 0) params.append("profileId", String(profileId));
+	if (profileIds && profileIds.length > 0) {
+    profileIds.forEach((id) => {
+        if (Number(id) > 0) {
+            params.append("profileIds", String(id));
+        }
+    });
+}
 	if (objectType && objectType !== "All") params.append("objectType", objectType);
 	if (startDate) params.append("startDate", startDate);
 	if (endDate) params.append("endDate", endDate);

@@ -36,14 +36,14 @@ interface ReportFiltersProps {
 	parameters?: any[];
 	objectTypes?: string[];
 	selectedDeviceId?: string | number;
-	selectedProfileId?: number | null;
+	selectedProfileIds?: number[];
 	selectedObjectType?: string;
 	onDeviceSelect?: (id: string | number) => void;
-	onProfileSelect?: (profileId: number | null) => void;
+	onProfileSelect?: (profileIds: number[]) => void;
 	onObjectTypeSelect?: (objectType: string) => void;
 	onSearch?: (searchParams: {
 		deviceId: string | number | null;
-		profileId: number | null;
+		profileIds: number[];
 		objectType: string | null;
 		paramIds: (string | number)[];
 		startDate: string;
@@ -63,7 +63,7 @@ export function ReportFilters({
 	parameters = [],
 	objectTypes = ["All"],
 	selectedDeviceId = 0,
-	selectedProfileId = null,
+	selectedProfileIds = [],
 	selectedObjectType = "All",
 	onDeviceSelect = () => {},
 	onProfileSelect = () => {},
@@ -76,7 +76,7 @@ export function ReportFilters({
 	canExport = false,
 }: ReportFiltersProps): React.JSX.Element {
 	const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
-	const [selectedProfile, setSelectedProfile] = useState<ProfileItem | null>(null);
+	const [selectedProfiles, setSelectedProfiles] = useState<ProfileItem[]>([]);
 	const [objectType, setObjectType] = useState<string>(selectedObjectType || "All");
 	const [selectedParams, setSelectedParams] = useState<any[]>([]);
 	const [intervalMinutes, setIntervalMinutes] = useState<number>(15);
@@ -115,13 +115,16 @@ export function ReportFilters({
 
 	// Sync selectedProfile with prop changes
 	useEffect(() => {
-		if (selectedProfileId && profiles.length > 0) {
-			const found = profiles.find((p) => p.id === selectedProfileId);
-			if (found) setSelectedProfile(found);
-		} else if (!selectedProfileId) {
-			setSelectedProfile(null);
-		}
-	}, [selectedProfileId, profiles]);
+    if (selectedProfileIds.length > 0 && profiles.length > 0) {
+        const selected = profiles.filter((profile) =>
+            selectedProfileIds.includes(profile.id)
+        );
+
+        setSelectedProfiles(selected);
+    } else {
+        setSelectedProfiles([]);
+    }
+}, [selectedProfileIds, profiles]);
 
 	// Filter parameters by selected Object Type if specified
 	const filteredParameters = React.useMemo(() => {
@@ -148,28 +151,37 @@ export function ReportFilters({
 
 	const handleDeviceChange = (event: React.SyntheticEvent, newValue: Device | null) => {
 		setSelectedDevice(newValue);
-		setSelectedProfile(null);
+		setSelectedProfiles([]);
 		setObjectType("All");
 		setSelectedParams([]);
 		onDeviceSelect(newValue ? newValue.id : 0);
-		onProfileSelect(null);
+		onProfileSelect([]);
 		onObjectTypeSelect("All");
 	};
 
-	const handleProfileChange = (event: React.SyntheticEvent, newValue: ProfileItem | null) => {
-		setSelectedProfile(newValue);
-		setSelectedParams([]);
-		onProfileSelect(newValue ? newValue.id : null);
-	};
+	const handleProfileChange = (
+    event: React.SyntheticEvent,
+    newValue: ProfileItem[]
+) => {
+    setSelectedProfiles(newValue);
+    setSelectedParams([]);
 
+    const profileIds = newValue.map((profile) => profile.id);
+
+    onProfileSelect(profileIds);
+};
 	const handleClearFilters = () => {
 	const today = dayjs();
 
 	setSelectedDevice(null);
-	setSelectedProfile(null);
+	setSelectedProfiles([]);
 	setObjectType("All");
 	setSelectedParams([]);
 	setIntervalMinutes(15);
+
+	onDeviceSelect(0);
+    onProfileSelect([]);
+    onObjectTypeSelect("All");
 
 	// Reset date range to today
 	setFromValue(today.startOf("day"));
@@ -209,7 +221,7 @@ export function ReportFilters({
 
 		onSearch({
 			deviceId: selectedDevice ? selectedDevice.id : null,
-			profileId: selectedProfile ? selectedProfile.id : null,
+			profileIds: selectedProfiles.map((p) => p.id),
 			objectType: objectType !== "All" ? objectType : null,
 			paramIds: selectedParams.map((p: any) => p.id),
 			startDate: formattedStart,
@@ -257,118 +269,149 @@ export function ReportFilters({
 					<Grid size={{ xs: 12, md: 4 }}>
 						<FormControl fullWidth size="small">
 							<Autocomplete
-								id="report-profile-autocomplete"
-								options={profiles}
-								size="small"
-								disabled={!selectedDevice || isLoadingProfiles}
-								getOptionLabel={(profile) => profile.friendlyName || profile.obisCode || ""}
-								value={selectedProfile}
-								onChange={handleProfileChange}
-								isOptionEqualToValue={(option, value) => option.id === value.id}
-								renderInput={(params) => (
-									<TextField
-										{...params}
-										label={selectedDevice ? "Select profile (optional - default all)" : "Select a device first"}
-										variant="outlined"
-										size="small"
-									/>
-								)}
-								openOnFocus
-							/>
-						</FormControl>
-					</Grid>
-
-					<LocalizationProvider dateAdapter={AdapterDayjs}>
-	<Grid size={{ xs: 12, md: 4 }}>
-		<TextField
-	label="Date Range"
-	value={
-		fromValue && toValue
-			? `${fromValue.format("DD-MM-YYYY")} → ${toValue.format("DD-MM-YYYY")}`
-			: ""
-	}
-	placeholder="Select date range"
-	size="small"
-	fullWidth
-	onClick={(e) => {
-		setRangeStart(fromValue);
-		setRangeEnd(toValue);
-		setDateRangeAnchor(e.currentTarget);
-	}}
-	InputProps={{
-		readOnly: true,
-		endAdornment:
-			fromValue && toValue ? (
-				<ClearIcon
-					sx={{ cursor: "pointer" }}
-					onClick={(e) => {
-						e.stopPropagation();
-						setFromValue(null);
-						setToValue(null);
-						setRangeStart(null);
-						setRangeEnd(null);
-					}}
-				/>
-			) : (
-				<CalendarMonthIcon />
-			),
-	}}
-/>
-		<Popover
-			open={Boolean(dateRangeAnchor)}
-			anchorEl={dateRangeAnchor}
-			onClose={() => setDateRangeAnchor(null)}
-			anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
-		>
-			<Stack sx={{ p: 1.5, width: 320 }}>
-				<DateCalendar
-	value={rangeEnd || rangeStart}
-	onChange={handleDateSelect}
-	slots={{
-		day: (props) => {
-			const selected = props.day.isSame(rangeStart, "day") || props.day.isSame(rangeEnd, "day");
-			const today = props.day.isSame(dayjs(), "day");
-
-			return (
-				<PickersDay
-					{...props}
-					sx={{
-						...(today && !selected && {
-							border: "1px solid",
-							borderColor: "primary.main"
-						}),
-						...(selected && {
-							backgroundColor: "primary.main",
-							color: "common.white",
-							"&:hover": { backgroundColor: "primary.dark" }
-						})
-					}}
-				/>
-			);
-		}
-	}}
-/>
-				<Stack direction="row" justifyContent="flex-end" spacing={1}>
-					<Button size="small" onClick={() => setDateRangeAnchor(null)}>
-						Cancel
-					</Button>
-					<Button
+						multiple
+						id="report-profile-autocomplete"
+						options={profiles}
 						size="small"
-						variant="contained"
-						disabled={!rangeStart || !rangeEnd}
-						onClick={() => {
-							setFromValue(rangeStart?.startOf("day") || null);
-							setToValue(rangeEnd?.endOf("day") || null);
-							setDateRangeAnchor(null);
+						disabled={!selectedDevice || isLoadingProfiles}
+						disableCloseOnSelect
+						getOptionLabel={(profile) =>
+							profile.friendlyName || profile.obisCode || ""
+						}
+						value={selectedProfiles}
+						onChange={handleProfileChange}
+						isOptionEqualToValue={(option, value) =>
+							option.id === value.id
+						}
+						renderOption={(props, option, { selected }) => {
+							const { key, ...optionProps } = props;
+
+							return (
+								<li key={key} {...optionProps}>
+									<Checkbox
+										icon={icon}
+										checkedIcon={checkedIcon}
+										style={{ marginRight: 8 }}
+										checked={selected}
+									/>
+
+									{option.friendlyName || option.obisCode}
+								</li>
+							);
 						}}
-					>
-						Apply
-					</Button>
-				</Stack>
-			</Stack>
-		</Popover>
-	</Grid>
-</LocalizationProvider>
+						renderInput={(params) => (
+							<TextField
+								{...params}
+								label={
+									selectedDevice
+										? "Select profiles (optional - default all)"
+										: "Select a device first"
+								}
+								variant="outlined"
+								size="small"
+								placeholder={
+									selectedProfiles.length === 0
+										? "All Profiles"
+										: ""
+								}
+							/>
+						)}
+						openOnFocus
+					/>
+											</FormControl>
+										</Grid>
+
+										<LocalizationProvider dateAdapter={AdapterDayjs}>
+						<Grid size={{ xs: 12, md: 4 }}>
+							<TextField
+						label="Date Range"
+						value={
+							fromValue && toValue
+								? `${fromValue.format("DD-MM-YYYY")} → ${toValue.format("DD-MM-YYYY")}`
+								: ""
+						}
+						placeholder="Select date range"
+						size="small"
+						fullWidth
+						onClick={(e) => {
+							setRangeStart(fromValue);
+							setRangeEnd(toValue);
+							setDateRangeAnchor(e.currentTarget);
+						}}
+						InputProps={{
+							readOnly: true,
+							endAdornment:
+								fromValue && toValue ? (
+									<ClearIcon
+										sx={{ cursor: "pointer" }}
+										onClick={(e) => {
+											e.stopPropagation();
+											setFromValue(null);
+											setToValue(null);
+											setRangeStart(null);
+											setRangeEnd(null);
+										}}
+									/>
+								) : (
+									<CalendarMonthIcon />
+								),
+						}}
+					/>
+							<Popover
+								open={Boolean(dateRangeAnchor)}
+								anchorEl={dateRangeAnchor}
+								onClose={() => setDateRangeAnchor(null)}
+								anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
+							>
+								<Stack sx={{ p: 1.5, width: 320 }}>
+									<DateCalendar
+						value={rangeEnd || rangeStart}
+						onChange={handleDateSelect}
+						slots={{
+							day: (props) => {
+								const selected = props.day.isSame(rangeStart, "day") || props.day.isSame(rangeEnd, "day");
+								const today = props.day.isSame(dayjs(), "day");
+
+								return (
+									<PickersDay
+										{...props}
+										sx={{
+											...(today && !selected && {
+												border: "1px solid",
+												borderColor: "primary.main"
+											}),
+											...(selected && {
+												backgroundColor: "primary.main",
+												color: "common.white",
+												"&:hover": { backgroundColor: "primary.dark" }
+											})
+										}}
+									/>
+								);
+							}
+						}}
+					/>
+									<Stack direction="row" justifyContent="flex-end" spacing={1}>
+										<Button size="small" onClick={() => setDateRangeAnchor(null)}>
+											Cancel
+										</Button>
+										<Button
+											size="small"
+											variant="contained"
+											disabled={!rangeStart || !rangeEnd}
+											onClick={() => {
+												setFromValue(rangeStart?.startOf("day") || null);
+												setToValue(rangeEnd?.endOf("day") || null);
+												setDateRangeAnchor(null);
+											}}
+										>
+											Apply
+										</Button>
+									</Stack>
+								</Stack>
+							</Popover>
+						</Grid>
+					</LocalizationProvider>
 					{/* Row 2: Parameters Autocomplete, Action Buttons */}
 					<Grid size={{ xs: 12, md: 7.5 }}>
 						<FormControl fullWidth size="small">
