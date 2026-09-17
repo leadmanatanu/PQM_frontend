@@ -574,7 +574,7 @@ export function AddDeviceForm({
 							<FormControl fullWidth size="small" error={!!errors.serialNo}>
 								<InputLabel>Serial Number</InputLabel>
 
-								<OutlinedInput label="Serial Number" value={txtSerialNo} onChange={handleSerChange} />
+								<OutlinedInput type="number" label="Serial Number" value={txtSerialNo} onChange={handleSerChange} />
 
 								{errors.serialNo && <FormHelperText>{errors.serialNo}</FormHelperText>}
 							</FormControl>
@@ -593,7 +593,7 @@ export function AddDeviceForm({
 								<OutlinedInput
 									label="Consumer Number"
 									name="consumerNo"
-									type="text"
+									type="number"
 									value={txtConsumerNo}
 									onChange={handleConChange}
 								/>
