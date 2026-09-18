@@ -1,6 +1,3 @@
-import * as React from 'react';
-import RouterLink from '@/components/RouterLink';
-import { useRouter } from '@/lib/next-navigation-shim';
 import Box from '@mui/material/Box';
 import Divider from '@mui/material/Divider';
 import ListItemIcon from '@mui/material/ListItemIcon';
@@ -8,14 +5,13 @@ import MenuItem from '@mui/material/MenuItem';
 import MenuList from '@mui/material/MenuList';
 import Popover from '@mui/material/Popover';
 import Typography from '@mui/material/Typography';
-import { GearSixIcon } from '@phosphor-icons/react/dist/ssr/GearSix';
 import { SignOutIcon } from '@phosphor-icons/react/dist/ssr/SignOut';
-import { UserIcon } from '@phosphor-icons/react/dist/ssr/User';
+import * as React from 'react';
+import { useRouter } from '../../../lib/next-navigation-shim';
 
-import { paths } from '@/paths';
-import { authClient } from '@/lib/auth/client';
-import { logger } from '@/lib/default-logger';
-import { useUser } from '@/hooks/use-user';
+import { useUser } from '../../../hooks/use-user';
+import { authClient } from '../../../lib/auth/client';
+import { logger } from '../../../lib/default-logger';
 
 export interface UserPopoverProps {
   anchorEl: Element | null;
