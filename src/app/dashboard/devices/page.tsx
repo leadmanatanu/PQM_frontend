@@ -369,8 +369,8 @@ export default function Page(): React.JSX.Element {
 					})
 				: "",
 
-			"Last Sync": device.lastSync
-				? new Date(device.lastSync).toLocaleString("en-IN", {
+			"Last Sync": device.lastSyncAt
+				? new Date(device.lastSyncAt).toLocaleString("en-IN", {
 						day: "2-digit",
 						month: "2-digit",
 						year: "numeric",

@@ -1,4 +1,3 @@
-import * as React from "react";
 import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -28,6 +27,7 @@ import TablePagination from "@mui/material/TablePagination";
 import TableRow from "@mui/material/TableRow";
 import Typography from "@mui/material/Typography";
 import dayjs from "dayjs";
+import * as React from "react";
 
 import { useSelection } from "../../../hooks/use-selection";
 import { useDeviceConnectionStatus } from "../../../hooks/useDeviceConnectionStatus";
@@ -57,7 +57,7 @@ export interface Device {
 
 	consumerNumber: string;
 
-	lastSync?: Date;
+	lastSyncAt?: Date;
 
 	clientAddress?: number;
 
@@ -274,7 +274,7 @@ export function DevicesTable({
 								const connectionStatusText =
 									liveStatus === true ? "Online" : liveStatus === false ? "Offline" : "Checking...";
 
-								const lastSync = row.lastSync;
+								const lastSyncAt = row.lastSyncAt;
 								const statusColor = connectionStatusText === "Online" ? "success" : "default";
 								const statusVariant = connectionStatusText === "Online" ? "filled" : "outlined";
 
@@ -350,8 +350,8 @@ export function DevicesTable({
 										</TableCell>
 										<TableCell sx={{ whiteSpace: "nowrap" }}>{row.ip}</TableCell>
 										<TableCell sx={{ whiteSpace: "nowrap" }}>
-											{lastSync ? (
-												dayjs(lastSync).format("MMM D, YYYY HH:mm")
+											{lastSyncAt ? (
+												dayjs(lastSyncAt).format("MMM D, YYYY HH:mm")
 											) : (
 												<Typography variant="caption" color="text.disabled">
 													Never
