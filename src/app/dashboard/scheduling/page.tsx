@@ -9,6 +9,7 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import {
 	Alert,
+	Autocomplete,
 	Box,
 	Button,
 	Card,
@@ -82,12 +83,12 @@ export default function SchedulingPage(): React.JSX.Element {
 
 	const [deviceSearch, setDeviceSearch] = React.useState("");
 
-	const [selectedDeviceId, setSelectedDeviceId] = React.useState<number | null>(null);
+	const [selectedDeviceIds, setSelectedDeviceIds] = React.useState<number[]>([]);
 
 	// Device already assigned to another schedule
 	const [changeDeviceDialogOpen, setChangeDeviceDialogOpen] = React.useState(false);
 
-	const [pendingDevice, setPendingDevice] = React.useState<Device | null>(null);
+	const [pendingDevices, setPendingDevices] = React.useState<Device[]>([]);
 
 	// Search filter
 	const [searchQuery, setSearchQuery] = React.useState<string>("");
@@ -155,7 +156,8 @@ export default function SchedulingPage(): React.JSX.Element {
 
 	const handleOpenManageDialog = (schedule: DeviceScheduleItem) => {
 		setSelectedManageSchedule(schedule);
-		setSelectedDeviceId(null);
+
+		setSelectedDeviceIds([]);
 		setDeviceSearch("");
 		setManageDialogOpen(true);
 	};
@@ -167,7 +169,7 @@ export default function SchedulingPage(): React.JSX.Element {
 
 		setManageDialogOpen(false);
 		setSelectedManageSchedule(null);
-		setSelectedDeviceId(null);
+		setSelectedDeviceIds([]);
 		setDeviceSearch("");
 	};
 
@@ -202,24 +204,15 @@ export default function SchedulingPage(): React.JSX.Element {
 	const availableDevices = React.useMemo(() => {
 		const query = deviceSearch.trim().toLowerCase();
 
-		return (
-			devices
-				// Do not show devices that are already
-				// attached to THIS schedule.
-				.filter((device) => device.deviceSyncScheduleId !== selectedManageSchedule?.id)
-				.filter((device) => {
-					if (!query) {
-						return true;
-					}
+		return devices
+			.filter((device) => device.deviceSyncScheduleId !== selectedManageSchedule?.id)
+			.filter((device) => {
+				if (!query) return true;
 
-					return (
-						String(device.id).toLowerCase().includes(query) ||
-						device.name?.toLowerCase().includes(query) ||
-						device.serialNumber?.toLowerCase().includes(query) ||
-						device.consumerNumber?.toLowerCase().includes(query)
-					);
-				})
-		);
+				return [device.id, device.name, device.serialNumber, device.consumerNumber]
+					.filter(Boolean)
+					.some((value) => String(value).toLowerCase().includes(query));
+			});
 	}, [devices, deviceSearch, selectedManageSchedule]);
 
 	// ============================================================
@@ -227,22 +220,26 @@ export default function SchedulingPage(): React.JSX.Element {
 	// ============================================================
 
 	const handleConfirmDeviceScheduleChange = async () => {
-		if (!pendingDevice || !selectedManageSchedule) {
+		if (!pendingDevices || !selectedManageSchedule) {
 			return;
 		}
 
 		try {
-			setSavingDeviceId(pendingDevice.id);
+			setSavingDeviceId(pendingDevices[0]?.id ?? null);
 
-			await editDevice({
-				...pendingDevice,
-				deviceSyncScheduleId: selectedManageSchedule.id,
-			});
+			await Promise.all(
+				pendingDevices.map((device) =>
+					editDevice({
+						...device,
+						deviceSyncScheduleId: selectedManageSchedule.id,
+					})
+				)
+			);
 
 			// Update local device state
 			setDevices((prev) =>
 				prev.map((device) =>
-					device.id === pendingDevice.id
+					pendingDevices.some((pending) => pending.id === device.id)
 						? {
 								...device,
 								deviceSyncScheduleId: selectedManageSchedule.id,
@@ -252,8 +249,8 @@ export default function SchedulingPage(): React.JSX.Element {
 			);
 
 			setChangeDeviceDialogOpen(false);
-			setPendingDevice(null);
-			setSelectedDeviceId(null);
+			setPendingDevices([]);
+			setSelectedDeviceIds([]);
 			setDeviceSearch("");
 
 			setSnackbar({
@@ -276,7 +273,7 @@ export default function SchedulingPage(): React.JSX.Element {
 
 	const handleCancelDeviceScheduleChange = () => {
 		setChangeDeviceDialogOpen(false);
-		setPendingDevice(null);
+		setPendingDevices([]);
 	};
 
 	// ============================================================
@@ -303,8 +300,7 @@ export default function SchedulingPage(): React.JSX.Element {
 						: item
 				)
 			);
-
-			setSelectedDeviceId(null);
+			setSelectedDeviceIds([]);
 			setDeviceSearch("");
 
 			setSnackbar({
@@ -325,30 +321,87 @@ export default function SchedulingPage(): React.JSX.Element {
 		}
 	};
 
-	const handleAddDeviceToSchedule = async () => {
-		if (selectedDeviceId === null || selectedManageSchedule === null) {
+	//multiple device assign  logic
+	const assignMultipleDevices = async (selectedDevices: Device[], scheduleId: number) => {
+		try {
+			setSavingDeviceId(selectedDevices[0]?.id ?? null);
+
+			await Promise.all(
+				selectedDevices.map((device) =>
+					editDevice({
+						...device,
+						deviceSyncScheduleId: scheduleId,
+					})
+				)
+			);
+
+			setDevices((prev) =>
+				prev.map((device) => {
+					const isSelected = selectedDevices.some((selected) => selected.id === device.id);
+
+					return isSelected
+						? {
+								...device,
+								deviceSyncScheduleId: scheduleId,
+							}
+						: device;
+				})
+			);
+
+			setSelectedDeviceIds([]);
+			setDeviceSearch("");
+
+			setSnackbar({
+				open: true,
+				message: `${selectedDevices.length} device${
+					selectedDevices.length === 1 ? "" : "s"
+				} added to schedule successfully.`,
+				severity: "success",
+			});
+		} catch (error) {
+			console.error("Failed to add devices:", error);
+
+			setSnackbar({
+				open: true,
+				message: "Failed to add devices.",
+				severity: "error",
+			});
+		} finally {
+			setSavingDeviceId(null);
+		}
+	};
+
+	const handleAddDevicesToSchedule = async () => {
+		if (selectedDeviceIds.length === 0 || !selectedManageSchedule) {
 			return;
 		}
 
-		const device = devices.find((item) => item.id === selectedDeviceId);
+		const selectedDevices = devices.filter((device) => selectedDeviceIds.includes(device.id));
 
-		if (!device) return;
+		if (selectedDevices.length === 0) {
+			return;
+		}
 
-		const currentScheduleId = device.deviceSyncScheduleId;
+		// Find devices already assigned
+		// to another schedule
+		const alreadyAssignedDevices = selectedDevices.filter((device) => {
+			const currentScheduleId = device.deviceSyncScheduleId;
 
-		// Device already has another schedule
-		if (
-			currentScheduleId !== null &&
-			currentScheduleId !== undefined &&
-			currentScheduleId !== selectedManageSchedule.id
-		) {
-			setPendingDevice(device);
+			return (
+				currentScheduleId !== null && currentScheduleId !== undefined && currentScheduleId !== selectedManageSchedule.id
+			);
+		});
+
+		// If one or more devices are already
+		// assigned somewhere else → confirmation
+		if (alreadyAssignedDevices.length > 0) {
+			setPendingDevices(alreadyAssignedDevices);
 			setChangeDeviceDialogOpen(true);
 			return;
 		}
 
-		// Device is unassigned
-		await assignDeviceToSchedule(device, selectedManageSchedule.id);
+		// All selected devices are unassigned
+		await assignMultipleDevices(selectedDevices, selectedManageSchedule.id);
 	};
 
 	// ============================================================
@@ -1017,8 +1070,8 @@ export default function SchedulingPage(): React.JSX.Element {
 			</Dialog>
 
 			{/* =====================================================
-    DELETE CONFIRMATION MODAL
-===================================================== */}
+    			DELETE CONFIRMATION MODAL
+				===================================================== */}
 
 			<Dialog open={deleteDialogOpen} onClose={handleCloseDeleteDialog} maxWidth="xs" fullWidth>
 				<DialogTitle sx={{ fontWeight: 600 }}>Delete Schedule</DialogTitle>
@@ -1044,8 +1097,8 @@ export default function SchedulingPage(): React.JSX.Element {
 				</DialogActions>
 			</Dialog>
 			{/* ============================================================
-    MANAGE SCHEDULE DEVICES
-============================================================ */}
+   				 MANAGE SCHEDULE DEVICES
+				============================================================ */}
 
 			<Dialog open={manageDialogOpen} onClose={handleCloseManageDialog} maxWidth="sm" fullWidth>
 				<DialogTitle sx={{ fontWeight: 600 }}>Manage Schedule</DialogTitle>
@@ -1129,51 +1182,101 @@ export default function SchedulingPage(): React.JSX.Element {
 						Add Device
 					</Typography>
 
-					<TextField
+					<Autocomplete
+						multiple
 						fullWidth
 						size="small"
-						placeholder="Search device..."
-						value={deviceSearch}
-						onChange={(event) => setDeviceSearch(event.target.value)}
-						sx={{ mb: 1.5 }}
-					/>
+						sx={{ mb: 1.8 }}
+						slotProps={{
+							listbox: {
+								sx: {
+									maxHeight: 200,
+								},
+							},
+						}}
+						options={devices.filter((device) => device.deviceSyncScheduleId !== selectedManageSchedule?.id)}
+						value={devices.filter((device) => selectedDeviceIds.includes(device.id))}
+						disableCloseOnSelect
+						getOptionLabel={(device) => `${device.name || `Device ${device.id}`} — ID ${device.id}`}
+						isOptionEqualToValue={(option, value) => option.id === value.id}
+						filterOptions={(options, { inputValue }) => {
+							const query = inputValue.trim().toLowerCase();
 
-					<TextField
-						select
-						fullWidth
-						size="small"
-						label="Select Device"
-						value={selectedDeviceId ?? ""}
-						onChange={(event) => setSelectedDeviceId(event.target.value ? Number(event.target.value) : null)}
-					>
-						{availableDevices.length === 0 ? (
-							<MenuItem disabled value="">
-								No devices found
-							</MenuItem>
-						) : (
-							availableDevices.map((device) => {
-								const deviceSchedule = getDeviceSchedule(device);
+							if (!query) return options;
 
-								return (
-									<MenuItem key={device.id} value={device.id}>
-										<Box>
-											<Typography variant="body2" fontWeight={600}>
-												{device.name || `Device ${device.id}`}
-												{" — ID "}
-												{device.id}
-											</Typography>
+							return options.filter((device) =>
+								[device.id, device.name, device.serialNumber, device.consumerNumber]
+									.filter(Boolean)
+									.some((value) => String(value).toLowerCase().includes(query))
+							);
+						}}
+						onChange={(_, newValue) => {
+							setSelectedDeviceIds(newValue.map((device) => device.id));
+						}}
+						renderOption={(props, device, { selected }) => {
+							const currentSchedule = getDeviceSchedule(device);
 
-											<Typography variant="caption" color={deviceSchedule ? "text.secondary" : "success.main"}>
-												{deviceSchedule
-													? `Currently assigned to ${formatScheduledTimeDisplay(deviceSchedule.scheduledTime)}`
-													: "Unassigned"}
+							return (
+								<li {...props} key={device.id}>
+									<Box
+										sx={{
+											display: "flex",
+											alignItems: "center",
+											gap: 1,
+											width: "100%",
+										}}
+									>
+										<input
+											type="checkbox"
+											checked={selected}
+											readOnly
+											style={{
+												width: 18,
+												height: 18,
+												cursor: "pointer",
+											}}
+										/>
+
+										<Box sx={{ width: "100%" }}>
+											<Box
+												sx={{
+													display: "flex",
+													alignItems: "center",
+													justifyContent: "space-between",
+													gap: 1,
+													flexWrap: "wrap",
+												}}
+											>
+												<Typography variant="body2" fontWeight={600}>
+													{device.name || `Device ${device.id}`} — ID {device.id}
+												</Typography>
+
+												<Typography variant="caption" color={currentSchedule ? "text.secondary" : "error.main"}>
+													{currentSchedule ? `Currently assigned to ${currentSchedule.scheduledTime}` : "Unassigned"}
+												</Typography>
+											</Box>
+
+											<Typography variant="caption" color="text.secondary">
+												{device.serialNumber ? `Serial: ${device.serialNumber}` : ""}
+												{device.consumerNumber ? ` · Consumer: ${device.consumerNumber}` : ""}
 											</Typography>
 										</Box>
-									</MenuItem>
-								);
-							})
-						)}
-					</TextField>
+									</Box>
+								</li>
+							);
+						}}
+						renderInput={(params) => <TextField {...params} label="Add Devices" placeholder="Search devices..." />}
+						renderTags={(selectedDevices, getTagProps) =>
+							selectedDevices.map((device, index) => (
+								<Chip
+									{...getTagProps({ index })}
+									key={device.id}
+									label={device.name || `Device ${device.id}`}
+									size="small"
+								/>
+							))
+						}
+					/>
 				</DialogContent>
 
 				<DialogActions
@@ -1189,8 +1292,8 @@ export default function SchedulingPage(): React.JSX.Element {
 					<Button
 						variant="contained"
 						color="primary"
-						disabled={selectedDeviceId === null || savingDeviceId !== null}
-						onClick={handleAddDeviceToSchedule}
+						disabled={selectedDeviceIds === null || savingDeviceId !== null}
+						onClick={handleAddDevicesToSchedule}
 					>
 						{savingDeviceId !== null ? "Adding..." : "Add Device"}
 					</Button>
@@ -1202,10 +1305,11 @@ export default function SchedulingPage(): React.JSX.Element {
 				<DialogTitle sx={{ fontWeight: 600 }}>Change Device Schedule?</DialogTitle>
 
 				<DialogContent dividers>
-					{pendingDevice && selectedManageSchedule && (
+					{pendingDevices.length > 0 && selectedManageSchedule && (
 						<>
 							<Typography variant="body1" sx={{ mb: 2 }}>
-								Device <strong>{pendingDevice.name || `Device ${pendingDevice.id}`}</strong>
+								The following device
+								{pendingDevices.length > 1 ? "s are" : " is"} already assigned to another schedule:
 							</Typography>
 
 							<Box
@@ -1219,18 +1323,22 @@ export default function SchedulingPage(): React.JSX.Element {
 								<Typography variant="body2" color="text.secondary">
 									Current Schedule
 								</Typography>
+								<Stack spacing={1}>
+									{pendingDevices.map((device) => {
+										const currentSchedule = getDeviceSchedule(device);
 
-								<Typography variant="body1" fontWeight={600}>
-									{(() => {
-										const currentSchedule = getDeviceSchedule(pendingDevice);
-
-										return currentSchedule
-											? `${formatScheduledTimeDisplay(currentSchedule.scheduledTime)} · ${
-													currentSchedule.repeatMode || "Daily"
-												}`
-											: "No Schedule";
-									})()}
-								</Typography>
+										return (
+											<Typography key={device.id} variant="body1" fontWeight={600}>
+												{device.name || `Device ${device.id}`} —{" "}
+												{currentSchedule
+													? `${formatScheduledTimeDisplay(
+															currentSchedule.scheduledTime
+														)} · ${currentSchedule.repeatMode || "Daily"}`
+													: "No Schedule"}
+											</Typography>
+										);
+									})}
+								</Stack>
 							</Box>
 
 							<Typography variant="body2" sx={{ mb: 1 }}>
