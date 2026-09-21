@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useEffect, useState } from "react";
 import type { Metadata } from "next";
+import SyncIcon from "@mui/icons-material/Sync";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -16,11 +17,12 @@ import { DownloadIcon } from "@phosphor-icons/react/dist/ssr/Download";
 import { PlusIcon } from "@phosphor-icons/react/dist/ssr/Plus";
 import * as XLSX from "xlsx";
 
-import { deleteDevice, fetchDevices, syncDeviceNow } from "../../../api/device";
+import { deleteDevice, fetchDevices, syncDeviceNow, syncDevicesNow } from "../../../api/device";
 import { AddDeviceForm } from "../../../components/dashboard/device/add-device-form";
 import { DevicesFilters } from "../../../components/dashboard/device/devices-filters";
 import { DevicesTable } from "../../../components/dashboard/device/devices-table";
 import type { Device } from "../../../components/dashboard/device/devices-table";
+import { StatusFooter, type DeviceRun } from "../../../components/dashboard/layout/StatusFooter";
 import { useDeviceConnectionStatus } from "../../../hooks/useDeviceConnectionStatus";
 
 function applyPagination(rows: Device[], page: number, rowsPerPage: number): Device[] {
@@ -31,6 +33,49 @@ export default function Page(): React.JSX.Element {
 	const [isVisible, setIsVisible] = useState(true);
 
 	const [devices, setDevices] = useState<Device[]>([]);
+
+	// running sync
+	const [runningDevices, setRunningDevices] = React.useState<DeviceRun[]>([
+		{
+			deviceId: 5,
+			deviceName: "Device 5",
+			progress: 60,
+			status: "loading",
+		},
+		{
+			deviceId: 6,
+			deviceName: "Device 6",
+			progress: 60,
+			status: "loading",
+		},
+		{
+			deviceId: 7,
+			deviceName: "Device 7",
+			progress: 98,
+			status: "loading",
+		},
+		{
+			deviceId: 8,
+			deviceName: "Device 8",
+			progress: 70,
+			status: "error",
+			message: "Error",
+		},
+
+		{
+			deviceId: 10,
+			deviceName: "Device 10",
+			progress: 100,
+			status: "success",
+			message: "Successful",
+		},
+		{
+			deviceId: 110,
+			deviceName: "Device 110",
+			progress: 95,
+			status: "loading",
+		},
+	]);
 
 	const [editingDevice, setEditingDevice] = useState<Device | null>(null);
 
@@ -49,6 +94,25 @@ export default function Page(): React.JSX.Element {
 
 	const [selectedDeviceIds, setSelectedDeviceIds] = useState<Set<number>>(new Set());
 	// const { connectionStatus } = useDeviceConnectionStatus(deviceIds);
+
+	// stop functuionn
+	const handleStop = (deviceId: number) => {
+		setRunningDevices((prev) =>
+			prev.map((device) =>
+				device.deviceId === deviceId
+					? {
+							...device,
+							status: "stopped",
+							message: "Stopped",
+						}
+					: device
+			)
+		);
+
+		setTimeout(() => {
+			setRunningDevices((prev) => prev.filter((device) => device.deviceId !== deviceId));
+		}, 2000);
+	};
 
 	// ---------------------------------------------------------
 	// Fetch devices
@@ -320,6 +384,43 @@ export default function Page(): React.JSX.Element {
 	};
 
 	// ---------------------------------------------------------
+	// multiple sync
+	// ---------------------------------------------------------
+	const handleSyncSelected = async () => {
+		if (selectedDeviceIds.size === 0) {
+			setSnackbarMessage("Please select at least one device.");
+			setSnackbarSeverity("warning");
+			setSnackbarOpen(true);
+			return;
+		}
+
+		const deviceIds = Array.from(selectedDeviceIds);
+
+		console.log("Sync device IDs:", deviceIds);
+
+		try {
+			const result = await syncDevicesNow(deviceIds);
+
+			if (!result?.status) {
+				setSnackbarMessage(result?.message || "Failed to sync selected devices.");
+				setSnackbarSeverity("error");
+				setSnackbarOpen(true);
+				return;
+			}
+
+			setSnackbarMessage(`${deviceIds.length} device(s) sync initiated successfully.`);
+			setSnackbarSeverity("success");
+			setSnackbarOpen(true);
+		} catch (error) {
+			console.error("Failed to sync devices:", error);
+
+			setSnackbarMessage("Failed to sync selected devices.");
+			setSnackbarSeverity("error");
+			setSnackbarOpen(true);
+		}
+	};
+
+	// ---------------------------------------------------------
 	// Snackbar
 	// ---------------------------------------------------------
 
@@ -537,6 +638,11 @@ export default function Page(): React.JSX.Element {
 							}}
 						>
 							<div>
+								<Button startIcon={<SyncIcon />} variant="contained" onClick={handleSyncSelected}>
+									Sync
+								</Button>
+							</div>
+							<div>
 								<Button
 									startIcon={<PlusIcon fontSize="var(--icon-fontSize-md)" />}
 									variant="contained"
@@ -604,6 +710,8 @@ export default function Page(): React.JSX.Element {
 					{snackbarMessage}
 				</Alert>
 			</Snackbar>
+
+			<StatusFooter open={runningDevices.length > 0} devices={runningDevices} onStop={handleStop} version="v1.1" />
 		</div>
 	);
 }
