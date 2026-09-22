@@ -1,14 +1,17 @@
 "use client";
 
+import Stack from "@mui/material/Stack";
 import * as React from "react";
 import { useEffect, useState } from "react";
-import Stack from "@mui/material/Stack";
-import Typography from "@mui/material/Typography";
 
 import { fetchDeviceParameter, fetchDevices, fetchProfiles, ProfileItem, scanDevice } from "../../../api/device";
 import { Device } from "../../../components/dashboard/device/devices-table";
 import { DeviceFilters } from "../../../components/dashboard/devicereadings/device-selection";
-import { DeviceRTable, LiveScanItem } from "../../../components/dashboard/devicereadings/devices-table";
+import {
+	DeviceRTable,
+	LiveScanGroup,
+	LiveScanItem,
+} from "../../../components/dashboard/devicereadings/devices-table";
 
 export default function Page(): React.JSX.Element {
 	const [loading, setLoading] = useState<"devices" | "profiles" | "parameters" | null>("devices");
@@ -20,6 +23,7 @@ export default function Page(): React.JSX.Element {
 
 	// Live Scan States
 	const [scanItems, setScanItems] = useState<LiveScanItem[]>([]);
+	const [scanGroups, setScanGroups] = useState<LiveScanGroup[]>([]);
 	const [scannedAt, setScannedAt] = useState<string | null>(null);
 	const [isScanning, setIsScanning] = useState<boolean>(false);
 	const [scanStatusText, setScanStatusText] = useState<string>("Connecting to DLMS meter and scanning live values...");
@@ -45,6 +49,7 @@ export default function Page(): React.JSX.Element {
 
 	// Fetches and merges parameters across one or more selected profiles.
 	// If profileIds is empty, fetches the device's default/full parameter list (profileId = null).
+	// Each parameter keeps its originating profileId/profileName so the UI can group by profile.
 	const loadParameters = async (deviceId: string | number, profileIds: number[]) => {
 		if (!deviceId || Number(deviceId) <= 0) {
 			setDevParamArr([]);
@@ -53,17 +58,32 @@ export default function Page(): React.JSX.Element {
 
 		setLoading("parameters");
 		try {
-			const idsToFetch = profileIds.length > 0 ? profileIds : [null];
+			const idsToFetch: (number | null)[] = profileIds.length > 0 ? profileIds : [null];
 
-			const results = await Promise.all(idsToFetch.map((pid) => fetchDeviceParameter(deviceId, pid)));
+			const results = await Promise.all(
+				idsToFetch.map(async (pid) => {
+					const response = await fetchDeviceParameter(deviceId, pid);
+					const profile = pid === null ? null : profiles.find((p) => p.id === pid);
+					const profileName = profile?.friendlyName || profile?.obisCode || "General";
 
-			const rawList = results.flatMap((r) => r?.data ?? []);
+					return (response?.data ?? []).map((param: any) => ({
+						...param,
+						profileId: pid,
+						profileName,
+					}));
+				})
+			);
 
-			const seenNames = new Set<string>();
+			const rawList = results.flat();
+
+			// Dedupe WITHIN a profile only — the same parameter may legitimately
+			// belong to more than one profile and must be shown under each.
+			const seenKeys = new Set<string>();
 			const uniqueParams = rawList.filter((param: any) => {
 				if (param.isVisible === false) return false;
-				if (seenNames.has(param.name)) return false;
-				seenNames.add(param.name);
+				const key = `${param.profileId ?? "none"}::${param.name}`;
+				if (seenKeys.has(key)) return false;
+				seenKeys.add(key);
 				return true;
 			});
 			setDevParamArr(uniqueParams);
@@ -80,6 +100,7 @@ export default function Page(): React.JSX.Element {
 		setSelectedProfileIds([]);
 		setHasScanned(false);
 		setScanItems([]);
+		setScanGroups([]);
 		setScannedAt(null);
 		setConcurrencyError(null);
 		setErrorMessage(null);
@@ -110,7 +131,15 @@ export default function Page(): React.JSX.Element {
 				params.paramIds
 			);
 			if (result.status && result.data) {
+
+
+				console.log("LIVE SCAN RESULT:", result.data);
+				console.log("LIVE SCAN ITEMS:", result.data.items);
+				console.log("LIVE SCAN GROUPS:", result.data?.groups);
+
+				
 				setScanItems(result.data.items ?? []);
+				setScanGroups(result.data.groups ?? []);
 				setScannedAt(result.data.scannedAt ?? new Date().toISOString());
 				setHasScanned(true);
 			} else if (result.isConcurrencyError) {
@@ -147,7 +176,8 @@ export default function Page(): React.JSX.Element {
 
 			{/* Live Scan Results Table */}
 			<DeviceRTable
-				items={scanItems}
+				// items={scanItems}
+				groups={scanGroups}
 				scannedAt={scannedAt}
 				isScanning={isScanning}
 				scanStatusText={scanStatusText}
