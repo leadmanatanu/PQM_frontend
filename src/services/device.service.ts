@@ -320,6 +320,60 @@ export const saveDeviceConfiguration = async (id: string | number, parameterIds:
 // SCAN DEVICE
 // ============================================================
 
+// export const scanDevice = async (
+// 	deviceId: string | number,
+// 	profileIds?: number[] | null,
+// 	paramIds?: (string | number)[] | null
+// ): Promise<{
+// 	status: boolean;
+// 	data?: any;
+// 	error?: string;
+// 	isConcurrencyError?: boolean;
+// }> => {
+// 	try {
+// 		const { data } = await apiClient.post(`/device/${deviceId}/live-scan`, {
+// 			profileIds: profileIds && profileIds.length > 0 ? profileIds : null,
+// 			parameterIds: paramIds && paramIds.length > 0 ? paramIds : null,
+// 		});
+
+// 		if (!data?.status) {
+// 			return { status: false, error: data?.errors?.[0] || "Live scan failed." };
+// 		}
+
+// 		const result = data.data;
+// 		return {
+// 			status: true,
+// 			data: {
+// 				scannedAt: result.scannedAt,
+// 				deviceId: result.deviceId,
+// 				deviceName: result.deviceName,
+// 				items: (result.items ?? []).map((it: any) => ({
+// 					parameterId: it.parameterId,
+// 					parameterName: it.parameterName,
+// 					obisCode: it.obisCode,
+// 					value: it.value ?? "",
+// 					unit: it.unit,
+// 					error: it.error,
+// 				})),
+
+// 			},
+// 		};
+// 	} catch (error: any) {
+// 		if (error.response?.status === 409) {
+// 			return {
+// 				status: false,
+// 				error:
+// 					error.response.data?.errors?.[0] || "Device is currently syncing — please try scanning again in a moment",
+// 				isConcurrencyError: true,
+// 			};
+// 		}
+// 		return {
+// 			status: false,
+// 			error: error.response?.data?.errors?.[0] || error.message || "Failed to scan device live readings.",
+// 		};
+// 	}
+// };
+
 export const scanDevice = async (
 	deviceId: string | number,
 	profileIds?: number[] | null,
@@ -337,23 +391,36 @@ export const scanDevice = async (
 		});
 
 		if (!data?.status) {
-			return { status: false, error: data?.errors?.[0] || "Live scan failed." };
+			return {
+				status: false,
+				error: data?.errors?.[0] || "Live scan failed.",
+			};
 		}
 
 		const result = data.data;
+
 		return {
 			status: true,
 			data: {
 				scannedAt: result.scannedAt,
 				deviceId: result.deviceId,
 				deviceName: result.deviceName,
-				items: (result.items ?? []).map((it: any) => ({
-					parameterId: it.parameterId,
-					parameterName: it.parameterName,
-					obisCode: it.obisCode,
-					value: it.value ?? "",
-					unit: it.unit,
-					error: it.error,
+
+				// IMPORTANT: Keep groups from backend
+				groups: (result.groups ?? []).map((group: any) => ({
+					profileId: group.profileId,
+					profileName: group.profileName,
+
+					items: (group.items ?? []).map((it: any) => ({
+						parameterId: it.parameterId,
+						parameterName: it.parameterName,
+						obisCode: it.obisCode,
+						value: it.value ?? "",
+						unit: it.unit,
+						error: it.error,
+						profileId: it.profileId,
+						profileName: it.profileName,
+					})),
 				})),
 			},
 		};
@@ -366,6 +433,7 @@ export const scanDevice = async (
 				isConcurrencyError: true,
 			};
 		}
+
 		return {
 			status: false,
 			error: error.response?.data?.errors?.[0] || error.message || "Failed to scan device live readings.",
