@@ -1,10 +1,8 @@
 "use client";
 
+import Box from "@mui/material/Box";
 import * as React from "react";
 import { useEffect, useState } from "react";
-import Box from "@mui/material/Box";
-import Stack from "@mui/material/Stack";
-import Typography from "@mui/material/Typography";
 
 import { fetchDeviceParameter, fetchDevices, fetchProfiles, ProfileItem } from "../../../api/device";
 import { Device } from "../../../components/dashboard/device/devices-table";
@@ -12,8 +10,10 @@ import { ReportFilters } from "../../../components/dashboard/report/report-selec
 import { DeviceRTable } from "../../../components/dashboard/report/report-table";
 import { exportAggregatedReport, fetchAggregatedReport } from "../../../services/logs.service";
 
-interface DeviceLog {
-	[key: string]: any;
+interface ReportGroup {
+	profileId: number | null;
+	profileName: string | null;
+	items: any[];
 }
 
 export default function Page(): React.JSX.Element {
@@ -25,12 +25,9 @@ export default function Page(): React.JSX.Element {
 	const [selectedObjectType, setSelectedObjectType] = useState<string>("All");
 	const [objectTypes, setObjectTypes] = useState<string[]>(["All"]);
 	const [devParamArr, setDevParamArr] = useState<any[]>([]);
-	const [deviceLogArr, setDeviceLogArr] = useState<DeviceLog[]>([]);
 
-	// Search & Pagination states
-	const [searchPage, setSearchPage] = useState<number>(0);
-	const [searchRowsPerPage, setSearchRowsPerPage] = useState<number>(20);
-	const [totalCount, setTotalCount] = useState<number>(0);
+	// Grouped report data (no more pagination state)
+	const [reportGroups, setReportGroups] = useState<ReportGroup[]>([]);
 	const [hasSearched, setHasSearched] = useState<boolean>(false);
 	const [lastSearchParams, setLastSearchParams] = useState<{
 		deviceId: string | number | null;
@@ -58,105 +55,67 @@ export default function Page(): React.JSX.Element {
 		loadInitialData();
 	}, []);
 
-	// const loadParameters = async (deviceId: string | number, profileIds: number[]) => {
-	// 	if (!deviceId || Number(deviceId) <= 0) {
-	// 		setDevParamArr([]);
-	// 		setObjectTypes(["All"]);
-	// 		return;
-	// 	}
-
-	// 	setLoading("parameters");
-	// 	try {
-	// 		const fetchedDeviceParameter = await fetchDeviceParameter(deviceId, profileId);
-	// 		const rawList = fetchedDeviceParameter?.data ?? [];
-	// 		const seenNames = new Set<string>();
-	// 		const uniqueParams = rawList.filter((param: any) => {
-	// 			if (param.isVisible === false) return false;
-	// 			if (seenNames.has(param.name)) return false;
-	// 			seenNames.add(param.name);
-	// 			return true;
-	// 		});
-	// 		setDevParamArr(uniqueParams);
-
-	// 		// Extract distinct ObjectType values
-	// 		const distinctObjTypes = Array.from(
-	// 			new Set(uniqueParams.map((p: any) => p.objectType).filter(Boolean))
-	// 		) as string[];
-	// 		setObjectTypes(["All", ...distinctObjTypes]);
-	// 	} catch (error) {
-	// 		console.error("Failed to fetch device parameters:", error);
-	// 		setDevParamArr([]);
-	// 		setObjectTypes(["All"]);
-	// 	} finally {
-	// 		setLoading(null);
-	// 	}
-	// };
-
-
 	const loadParameters = async (deviceId: string | number, profileIds: number[]) => {
-    if (!deviceId || Number(deviceId) <= 0) {
-        setDevParamArr([]);
-        setObjectTypes(["All"]);
-        return;
-    }
+		if (!deviceId || Number(deviceId) <= 0) {
+			setDevParamArr([]);
+			setObjectTypes(["All"]);
+			return;
+		}
 
-    setLoading("parameters");
+		setLoading("parameters");
 
-    try {
-        const responses = profileIds.length
-            ? await Promise.all(profileIds.map(id => fetchDeviceParameter(deviceId, id)))
-            : [await fetchDeviceParameter(deviceId, null)];
+		try {
+			const responses = profileIds.length
+				? await Promise.all(profileIds.map((id) => fetchDeviceParameter(deviceId, id)))
+				: [await fetchDeviceParameter(deviceId, null)];
 
-        const params = responses.flatMap(r => r?.data ?? []);
-        const seen = new Set<string>();
+			const params = responses.flatMap((r) => r?.data ?? []);
+			const seen = new Set<string>();
 
-        const uniqueParams = params.filter((p: any) => {
-            if (p.isVisible === false || seen.has(p.name)) return false;
-            seen.add(p.name);
-            return true;
-        });
+			const uniqueParams = params.filter((p: any) => {
+				if (p.isVisible === false || seen.has(p.name)) return false;
+				seen.add(p.name);
+				return true;
+			});
 
-        setDevParamArr(uniqueParams);
-        setObjectTypes(["All", ...Array.from(new Set(uniqueParams.map(p => p.objectType).filter(Boolean)))]);
-    } catch (error) {
-        console.error("Failed to fetch device parameters:", error);
-        setDevParamArr([]);
-        setObjectTypes(["All"]);
-    } finally {
-        setLoading(null);
-    }
-};
+			setDevParamArr(uniqueParams);
+			setObjectTypes(["All", ...Array.from(new Set(uniqueParams.map((p) => p.objectType).filter(Boolean)))]);
+		} catch (error) {
+			console.error("Failed to fetch device parameters:", error);
+			setDevParamArr([]);
+			setObjectTypes(["All"]);
+		} finally {
+			setLoading(null);
+		}
+	};
+
 	const handleDeviceSelection = async (id: string | number) => {
 		setSelectedDeviceId(id);
 		setSelectedProfileIds([]);
 		setSelectedObjectType("All");
 		setHasSearched(false);
-		setDeviceLogArr([]);
-		setTotalCount(0);
+		setReportGroups([]);
 		setLastSearchParams(null);
-		setSearchPage(0);
 		await loadParameters(id, []);
 	};
 
 	const handleProfileSelection = async (profileIds: number[]) => {
-    setSelectedProfileIds(profileIds);
-    await loadParameters(selectedDeviceId, profileIds);
-};
+		setSelectedProfileIds(profileIds);
+		await loadParameters(selectedDeviceId, profileIds);
+	};
 
 	const handleObjectTypeSelection = (objType: string) => {
 		setSelectedObjectType(objType);
 	};
 
 	const executeSearch = async (
-    deviceId: string | number | null,
-    profileIds: number[],
-    objectType: string | null,
-    paramIds: (string | number)[],
-    startDate: string,
-    endDate: string,
-    intervalMinutes: number,
-    pageNumber: number,
-    pageSize: number
+		deviceId: string | number | null,
+		profileIds: number[],
+		objectType: string | null,
+		paramIds: (string | number)[],
+		startDate: string,
+		endDate: string,
+		intervalMinutes: number
 	) => {
 		setLoading("search");
 		try {
@@ -167,29 +126,17 @@ export default function Page(): React.JSX.Element {
 				paramIds.length > 0 ? paramIds : null,
 				startDate,
 				endDate,
-				intervalMinutes,
-				pageNumber + 1,
-				pageSize
+				intervalMinutes
 			);
 
 			const payload = response?.data;
-			const list = Array.isArray(payload?.deviceLogSearch)
-				? payload.deviceLogSearch
-				: Array.isArray(payload)
-					? payload
-					: Array.isArray(response)
-						? response
-						: [];
+			const groups: ReportGroup[] = Array.isArray(payload?.groups) ? payload.groups : [];
 
-			const total = payload?.totalCount ?? response?.totalCount ?? list.length;
-
-			setDeviceLogArr(list);
-			setTotalCount(total);
+			setReportGroups(groups);
 			setHasSearched(true);
 		} catch (error) {
 			console.error("Failed to search aggregated report readings:", error);
-			setDeviceLogArr([]);
-			setTotalCount(0);
+			setReportGroups([]);
 			setHasSearched(true);
 		} finally {
 			setLoading(null);
@@ -206,7 +153,6 @@ export default function Page(): React.JSX.Element {
 		intervalMinutes: number;
 	}) => {
 		setLastSearchParams(params);
-		setSearchPage(0);
 		executeSearch(
 			params.deviceId,
 			params.profileIds,
@@ -214,9 +160,7 @@ export default function Page(): React.JSX.Element {
 			params.paramIds,
 			params.startDate,
 			params.endDate,
-			params.intervalMinutes,
-			0,
-			searchRowsPerPage
+			params.intervalMinutes
 		);
 	};
 
@@ -231,42 +175,6 @@ export default function Page(): React.JSX.Element {
 			lastSearchParams.endDate,
 			lastSearchParams.intervalMinutes
 		);
-	};
-
-	const handlePageChange = (event: unknown, newPage: number) => {
-		setSearchPage(newPage);
-		if (lastSearchParams) {
-			executeSearch(
-				lastSearchParams.deviceId,
-				lastSearchParams.profileIds,
-				lastSearchParams.objectType,
-				lastSearchParams.paramIds,
-				lastSearchParams.startDate,
-				lastSearchParams.endDate,
-				lastSearchParams.intervalMinutes,
-				newPage,
-				searchRowsPerPage
-			);
-		}
-	};
-
-	const handleRowsPerPageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-		const newSize = parseInt(event.target.value, 10);
-		setSearchRowsPerPage(newSize);
-		setSearchPage(0);
-		if (lastSearchParams) {
-			executeSearch(
-				lastSearchParams.deviceId,
-				lastSearchParams.profileIds,
-				lastSearchParams.objectType,
-				lastSearchParams.paramIds,
-				lastSearchParams.startDate,
-				lastSearchParams.endDate,
-				lastSearchParams.intervalMinutes,
-				0,
-				newSize
-			);
-		}
 	};
 
 	return (
@@ -300,17 +208,8 @@ export default function Page(): React.JSX.Element {
 				isSearching={loading === "search"}
 			/>
 
-			{/* Pivoted Readings Table — rows=parameters, columns=aggregated time buckets */}
-			<DeviceRTable
-				rows={deviceLogArr}
-				totalCount={totalCount}
-				page={searchPage}
-				rowsPerPage={searchRowsPerPage}
-				onPageChange={handlePageChange}
-				onRowsPerPageChange={handleRowsPerPageChange}
-				hasSearched={hasSearched}
-				isSearching={loading === "search"}
-			/>
+			{/* Grouped-by-profile readings, each group independently collapsible/scrollable */}
+			<DeviceRTable groups={reportGroups} hasSearched={hasSearched} isSearching={loading === "search"} />
 		</Box>
 	);
 }

@@ -131,13 +131,6 @@ export default function Page(): React.JSX.Element {
 				params.paramIds
 			);
 			if (result.status && result.data) {
-
-
-				console.log("LIVE SCAN RESULT:", result.data);
-				console.log("LIVE SCAN ITEMS:", result.data.items);
-				console.log("LIVE SCAN GROUPS:", result.data?.groups);
-
-				
 				setScanItems(result.data.items ?? []);
 				setScanGroups(result.data.groups ?? []);
 				setScannedAt(result.data.scannedAt ?? new Date().toISOString());

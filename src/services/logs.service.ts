@@ -47,24 +47,23 @@ export const fetchDeviceReading = async (
 	}
 };
 
-// Fetch aggregated report readings (5, 15, 30 min intervals)
+// Fetch aggregated report readings (5, 15, 30 min intervals), grouped by profile.
+// No pagination — backend now returns the full grouped result set in one call.
 export const fetchAggregatedReport = async (
 	deviceId?: string | number | null,
-	 profileIds?: number[],
+	profileIds?: number[],
 	objectType?: string | null,
 	parameterIds?: (string | number)[] | null,
 	startDate?: string,
 	endDate?: string,
-	intervalMinutes: number = 15,
-	pageNumber: number = 1,
-	pageSize: number = 20
+	intervalMinutes: number = 15
 ): Promise<any | null> => {
 	try {
-		const params: Record<string, any> = { pageNumber, pageSize, intervalMinutes };
+		const params: Record<string, any> = { intervalMinutes };
 		if (deviceId && Number(deviceId) > 0) params.deviceId = deviceId;
 		if (profileIds && profileIds.length > 0) {
-    params.profileIds = profileIds.map(Number).filter((id) => id > 0);
-}
+			params.profileIds = profileIds.map(Number).filter((id) => id > 0);
+		}
 		if (objectType && objectType !== "All") params.objectType = objectType;
 		if (startDate) params.startDate = startDate;
 		if (endDate) params.endDate = endDate;
@@ -87,6 +86,10 @@ export const fetchAggregatedReport = async (
 				return parts.join("&");
 			},
 		});
+
+		// eslint-disable-next-line no-console
+		console.log("[fetchAggregatedReport] response from /report/aggregate:", data);
+
 		return data;
 	} catch (error) {
 		console.error("Error fetching aggregated report:", error);
@@ -133,12 +136,12 @@ export const exportAggregatedReport = (
 	const params = new URLSearchParams();
 	if (deviceId && Number(deviceId) > 0) params.append("deviceId", String(deviceId));
 	if (profileIds && profileIds.length > 0) {
-    profileIds.forEach((id) => {
-        if (Number(id) > 0) {
-            params.append("profileIds", String(id));
-        }
-    });
-}
+		profileIds.forEach((id) => {
+			if (Number(id) > 0) {
+				params.append("profileIds", String(id));
+			}
+		});
+	}
 	if (objectType && objectType !== "All") params.append("objectType", objectType);
 	if (startDate) params.append("startDate", startDate);
 	if (endDate) params.append("endDate", endDate);
