@@ -1,17 +1,13 @@
 "use client";
 
-import Stack from "@mui/material/Stack";
 import * as React from "react";
 import { useEffect, useState } from "react";
+import Stack from "@mui/material/Stack";
 
 import { fetchDeviceParameter, fetchDevices, fetchProfiles, ProfileItem, scanDevice } from "../../../api/device";
 import { Device } from "../../../components/dashboard/device/devices-table";
 import { DeviceFilters } from "../../../components/dashboard/devicereadings/device-selection";
-import {
-	DeviceRTable,
-	LiveScanGroup,
-	LiveScanItem,
-} from "../../../components/dashboard/devicereadings/devices-table";
+import { DeviceRTable, LiveScanGroup, LiveScanItem } from "../../../components/dashboard/devicereadings/devices-table";
 
 export default function Page(): React.JSX.Element {
 	const [loading, setLoading] = useState<"devices" | "profiles" | "parameters" | null>("devices");
@@ -131,6 +127,13 @@ export default function Page(): React.JSX.Element {
 				params.paramIds
 			);
 			if (result.status && result.data) {
+
+
+				console.log("LIVE SCAN RESULT:", result.data);
+				console.log("LIVE SCAN ITEMS:", result.data.items);
+				console.log("LIVE SCAN GROUPS:", result.data?.groups);
+
+				
 				setScanItems(result.data.items ?? []);
 				setScanGroups(result.data.groups ?? []);
 				setScannedAt(result.data.scannedAt ?? new Date().toISOString());
