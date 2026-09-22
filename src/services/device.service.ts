@@ -178,6 +178,17 @@ export const syncDeviceNow = async (deviceId: string | number): Promise<any> => 
 };
 
 // ============================================================
+// sync multiple devices
+// ============================================================
+export const syncDevicesNow = async (deviceIds: number[]) => {
+	const response = await apiClient.post("/multiple-devices/sync", {
+		deviceIds,
+	});
+
+	return response.data;
+};
+
+// ============================================================
 // DISCOVER DEVICE PARAMETERS
 // ============================================================
 
