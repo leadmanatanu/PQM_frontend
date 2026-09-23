@@ -35,7 +35,6 @@ export interface LiveScanItem {
 export interface LiveScanGroup {
 	profileId: number;
 	profileName: string;
-	// groups?: LiveScanGroup[];
 
 	items: LiveScanItem[];
 }

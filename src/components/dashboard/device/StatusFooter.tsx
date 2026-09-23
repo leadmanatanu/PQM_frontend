@@ -39,7 +39,7 @@ export function StatusFooter({ open, devices, onStop, version = "v1.1" }: Status
 					position: "fixed",
 					bottom: 0,
 					left: {
-						xs: 0,
+						xs: "var(--SideNav-width)",
 						md: "var(--SideNav-width)",
 					},
 					right: 0,

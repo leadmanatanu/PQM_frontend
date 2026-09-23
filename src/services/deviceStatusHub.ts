@@ -9,11 +9,16 @@ if (!apiBaseUrl) {
 }
 
 const serverUrl = apiBaseUrl.replace(/\/api\/?$/, "");
+
 const HUB_URL = `${serverUrl}/hubs/device`;
 
 class DeviceStatusHubService {
 	private connection: HubConnection | null = null;
 	private startPromise: Promise<void> | null = null;
+
+	// =========================================================
+	// GET / CREATE CONNECTION
+	// =========================================================
 
 	private getConnection(): HubConnection {
 		if (!this.connection) {
@@ -27,7 +32,7 @@ class DeviceStatusHubService {
 				console.warn("SignalR reconnecting...", error);
 			});
 
-			this.connection.onreconnected(async () => {
+			this.connection.onreconnected(() => {
 				console.log("SignalR reconnected");
 			});
 
@@ -38,6 +43,10 @@ class DeviceStatusHubService {
 
 		return this.connection;
 	}
+
+	// =========================================================
+	// START CONNECTION
+	// =========================================================
 
 	async start(): Promise<void> {
 		const connection = this.getConnection();
@@ -50,15 +59,16 @@ class DeviceStatusHubService {
 			return this.startPromise;
 		}
 
-		this.startPromise = connection
-			.start()
-
-			.finally(() => {
-				this.startPromise = null;
-			});
+		this.startPromise = connection.start().finally(() => {
+			this.startPromise = null;
+		});
 
 		return this.startPromise;
 	}
+
+	// =========================================================
+	// DEVICE SUBSCRIPTION
+	// =========================================================
 
 	async subscribeToDevices(deviceIds: number[]) {
 		await this.start();
@@ -98,10 +108,16 @@ class DeviceStatusHubService {
 		await connection.invoke("UnsubscribeFromDevices", ids);
 	}
 
+	// =========================================================
+	// DEVICE ONLINE / OFFLINE
+	// =========================================================
+
 	onDeviceStatusChanged(callback: (deviceId: number, isOnline: boolean) => void) {
 		const connection = this.getConnection();
 
 		const handler = (data: { deviceId: number; isOnline: boolean }) => {
+			console.log("📡 DeviceConnectionStatusChanged:", data);
+
 			callback(data.deviceId, data.isOnline);
 		};
 
@@ -109,6 +125,94 @@ class DeviceStatusHubService {
 
 		return () => {
 			connection.off("DeviceConnectionStatusChanged", handler);
+		};
+	}
+
+	// =========================================================
+	// DEVICE LAST SYNC CHANGED
+	// =========================================================
+
+	onDeviceLastSyncChanged(callback: (data: { deviceId: number; lastSyncAt: string }) => void) {
+		const connection = this.getConnection();
+
+		const handler = (data: { deviceId: number; lastSyncAt: string }) => {
+			callback(data);
+		};
+
+		connection.on("DeviceLastSyncChanged", handler);
+
+		return () => {
+			connection.off("DeviceLastSyncChanged", handler);
+		};
+	}
+
+	// =========================================================
+	// SYNC STARTED
+	// =========================================================
+
+	onSyncStarted(callback: (data: any) => void) {
+		const connection = this.getConnection();
+
+		connection.on("SyncStarted", callback);
+
+		return () => {
+			connection.off("SyncStarted", callback);
+		};
+	}
+
+	// =========================================================
+	// SYNC PROGRESS
+	// =========================================================
+
+	onSyncProgress(callback: (data: any) => void) {
+		const connection = this.getConnection();
+
+		connection.on("SyncProgress", callback);
+
+		return () => {
+			connection.off("SyncProgress", callback);
+		};
+	}
+
+	// =========================================================
+	// SYNC COMPLETED
+	// =========================================================
+
+	onSyncCompleted(callback: (data: any) => void) {
+		const connection = this.getConnection();
+
+		connection.on("SyncCompleted", callback);
+
+		return () => {
+			connection.off("SyncCompleted", callback);
+		};
+	}
+
+	// =========================================================
+	// SYNC FAILED
+	// =========================================================
+
+	onSyncFailed(callback: (data: any) => void) {
+		const connection = this.getConnection();
+
+		connection.on("SyncFailed", callback);
+
+		return () => {
+			connection.off("SyncFailed", callback);
+		};
+	}
+
+	// =========================================================
+	// SYNC STOPPED
+	// =========================================================
+
+	onSyncStopped(callback: (data: any) => void) {
+		const connection = this.getConnection();
+
+		connection.on("SyncStopped", callback);
+
+		return () => {
+			connection.off("SyncStopped", callback);
 		};
 	}
 }

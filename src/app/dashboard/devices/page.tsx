@@ -22,8 +22,9 @@ import { AddDeviceForm } from "../../../components/dashboard/device/add-device-f
 import { DevicesFilters } from "../../../components/dashboard/device/devices-filters";
 import { DevicesTable } from "../../../components/dashboard/device/devices-table";
 import type { Device } from "../../../components/dashboard/device/devices-table";
-import { StatusFooter, type DeviceRun } from "../../../components/dashboard/layout/StatusFooter";
+import { DeviceRun, StatusFooter } from "../../../components/dashboard/device/StatusFooter";
 import { useDeviceConnectionStatus } from "../../../hooks/useDeviceConnectionStatus";
+import { syncDeviceManager } from "../../../managers/syncDeviceManager";
 
 function applyPagination(rows: Device[], page: number, rowsPerPage: number): Device[] {
 	return rows.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
@@ -162,8 +163,27 @@ export default function Page(): React.JSX.Element {
 	const deviceIds = React.useMemo(() => {
 		return devices.map((device) => device.id);
 	}, [devices]);
+	const { connectionStatus, lastSyncUpdates } = useDeviceConnectionStatus(deviceIds);
+	useEffect(() => {
+		if (Object.keys(lastSyncUpdates).length === 0) {
+			return;
+		}
 
-	const { connectionStatus } = useDeviceConnectionStatus(deviceIds);
+		setDevices((prevDevices) =>
+			prevDevices.map((device) => {
+				const lastSyncAt = lastSyncUpdates[device.id];
+
+				if (!lastSyncAt) {
+					return device;
+				}
+
+				return {
+					...device,
+					lastSyncAt: new Date(lastSyncAt),
+				};
+			})
+		);
+	}, [lastSyncUpdates]);
 
 	// ---------------------------------------------------------
 	// Search + Filters logic
@@ -332,54 +352,35 @@ export default function Page(): React.JSX.Element {
 	// ---------------------------------------------------------
 	// Sync device now
 	// ---------------------------------------------------------
-
 	const handleSyncNow = async (deviceId: number) => {
-		setSyncingDeviceIds((prev) => new Set(prev).add(deviceId));
-
 		try {
-			const result = await syncDeviceNow(deviceId);
+			console.log("🚀 Starting sync for device:", deviceId);
 
-			if (!result.status) {
-				setSyncingDeviceIds((prev) => {
-					const next = new Set(prev);
-
-					next.delete(deviceId);
-
-					return next;
-				});
-
-				if (result.statusCode === 409) {
-					setSnackbarMessage(result.message || `Sync is already in progress for device ${deviceId}.`);
-
-					setSnackbarSeverity("warning");
-				} else {
-					setSnackbarMessage(result.message || `Failed to trigger sync for device ${deviceId}.`);
-
-					setSnackbarSeverity("error");
-				}
-
-				setSnackbarOpen(true);
-			} else {
-				setSnackbarMessage(`Sync initiated for device ${deviceId}. Live status will update below.`);
-
-				setSnackbarSeverity("success");
-				setSnackbarOpen(true);
-			}
-		} catch (error) {
-			console.error(`Failed to sync device ${deviceId}:`, error);
+			// IMPORTANT:
+			// Keep device subscribed during long-running sync
+			syncDeviceManager.add(deviceId);
 
 			setSyncingDeviceIds((prev) => {
 				const next = new Set(prev);
-
-				next.delete(deviceId);
-
+				next.add(deviceId);
 				return next;
 			});
 
-			setSnackbarMessage(`Failed to sync device ${deviceId}.`);
+			// Start backend sync
+			await syncDeviceNow(deviceId);
 
-			setSnackbarSeverity("error");
-			setSnackbarOpen(true);
+			console.log("✅ Sync request accepted for device:", deviceId);
+
+		} catch (error) {
+			console.error(`❌ Failed to start sync for device ${deviceId}:`, error);
+
+			syncDeviceManager.remove(deviceId);
+
+			setSyncingDeviceIds((prev) => {
+				const next = new Set(prev);
+				next.delete(deviceId);
+				return next;
+			});
 		}
 	};
 

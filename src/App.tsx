@@ -16,7 +16,21 @@ import { UserProvider } from "./contexts/user-context";
 
 import "@/styles/global.css";
 
+import { useEffect } from "react";
+
 export default function App() {
+	useEffect(() => {
+		const handleBeforeUnload = () => {
+			// Intentionally empty.
+		};
+
+		window.addEventListener("beforeunload", handleBeforeUnload);
+
+		return () => {
+			window.removeEventListener("beforeunload", handleBeforeUnload);
+		};
+	}, []);
+
 	return (
 		<LocalizationProvider>
 			<UserProvider>
