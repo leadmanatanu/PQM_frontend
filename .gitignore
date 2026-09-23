@@ -1,3 +1,18 @@
+# Environment / Secrets
+.env
+.env.*
+!.env.example
+
+# Local/private configuration
+*.local
+*.secret
+*.private
+
+# Certificates / keys
+*.pem
+*.key
+*.crt
+
 # Logs
 logs
 *.log
@@ -7,15 +22,23 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
+# Dependencies
+node_modules/
 
-# Editor directories and files
+# Build
+dist/
+dist-ssr/
+.next/
+.vite/
+
+# Backend build
+obj/
+bin/
+
+# IDE
 .vscode/*
 !.vscode/extensions.json
-.idea
+.idea/
 .DS_Store
 *.suo
 *.ntvs*
@@ -23,9 +46,5 @@ dist-ssr
 *.sln
 *.sw?
 
-# Build & dev tools
-.next/
-.vite/
+# Local/dev folders
 scratch/
-obj/
-bin/
