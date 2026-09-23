@@ -1,17 +1,15 @@
-import * as React from "react";
 import Avatar from "@mui/material/Avatar";
-import Badge from "@mui/material/Badge";
 import Box from "@mui/material/Box";
 import IconButton from "@mui/material/IconButton";
 import Stack from "@mui/material/Stack";
-import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
-import { Bell as BellIcon } from "@phosphor-icons/react/dist/ssr/Bell";
 import { List as ListIcon } from "@phosphor-icons/react/dist/ssr/List";
+import * as React from "react";
 
 import { usePopover } from "../../../hooks/use-popover";
 import { useUser } from "../../../hooks/use-user";
 import { usePathname } from "../../../lib/next-navigation-shim";
+import Notification from "../../notification/Notification";
 import { navItems } from "./config";
 import { MobileNav } from "./mobile-nav";
 import { UserPopover } from "./user-popover";
@@ -21,6 +19,8 @@ export function MainNav(): React.JSX.Element {
 	const [openNav, setOpenNav] = React.useState<boolean>(false);
 	const userPopover = usePopover<HTMLDivElement>();
 	const { user } = useUser();
+	console.log("USER OBJECT:", user);
+console.log("USER ID:", user?.id);
 
 	const activeNavItem = navItems.find(
 		(item) =>
@@ -86,42 +86,26 @@ export function MainNav(): React.JSX.Element {
 
 					{/* Right section: Notification bell + User profile avatar */}
 					<Stack sx={{ alignItems: "center" }} direction="row" spacing={1.5}>
-						<Tooltip title="Notifications">
-							<IconButton
-								sx={{
-									color: "text.secondary",
-									p: 0.75,
-									borderRadius: "6px",
-									transition: "background-color 0.2s ease-in-out",
-									"&:hover": {
-										bgcolor: "action.hover",
-										color: "text.primary",
-									},
-								}}
-							>
-								<Badge badgeContent={3} color="primary" variant="dot">
-									<BellIcon fontSize="20px" />
-								</Badge>
-							</IconButton>
-						</Tooltip>
 
-						<Avatar
-							onClick={userPopover.handleOpen}
-							ref={userPopover.anchorRef}
-							alt={displayName}
-							sx={{
-								cursor: "pointer",
-								width: 32,
-								height: 32,
-								transition: "transform 0.15s ease, box-shadow 0.15s ease",
-								"&:hover": {
-									boxShadow: "0 0 0 2px var(--mui-palette-primary-main)",
-								},
-							}}
-						>
-							{avatarSrc}
-						</Avatar>
-					</Stack>
+					{user?.id && <Notification userId={Number(user.id)} />}
+
+					<Avatar
+						onClick={userPopover.handleOpen}
+						ref={userPopover.anchorRef}
+						alt={displayName}
+						sx={{
+							cursor: "pointer",
+							width: 32,
+							height: 32,
+							transition: "transform 0.15s ease, box-shadow 0.15s ease",
+							"&:hover": {
+								boxShadow: "0 0 0 2px var(--mui-palette-primary-main)",
+							},
+						}}
+					>
+						{avatarSrc}
+					</Avatar>
+				</Stack>
 				</Stack>
 			</Box>
 
