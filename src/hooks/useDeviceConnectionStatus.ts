@@ -299,6 +299,8 @@ export function useDeviceConnectionStatus(deviceIds: number[]) {
 			console.log("start");
 			console.log("📡 CURRENT DEVICE IDS:", currentIds);
 
+			console.log("🔄 SYNC SUBSCRIBED DEVICE IDS:", syncingIds);
+
 			console.log("📡 PREVIOUS SUBSCRIBED DEVICE IDS:", oldIds);
 
 			console.log("🟢 NEW DEVICES TO SUBSCRIBE:", newIds);

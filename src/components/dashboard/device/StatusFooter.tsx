@@ -194,8 +194,6 @@ export function StatusFooter({ open, devices, onStop, version = "v1.1" }: Status
 	// --------------------------------------------------
 
 	const renderDeviceRow = (device: DeviceRun) => {
-		const deviceProgress = Math.min(Math.max(device.progress, 0), 100);
-
 		const deviceRunning = device.status === "loading" || device.status === "pending";
 
 		return (
@@ -210,7 +208,7 @@ export function StatusFooter({ open, devices, onStop, version = "v1.1" }: Status
 					px: 2,
 				}}
 			>
-				{/* Device name */}
+				{/* DEVICE NAME */}
 				<Typography
 					variant="caption"
 					fontWeight={600}
@@ -239,8 +237,7 @@ export function StatusFooter({ open, devices, onStop, version = "v1.1" }: Status
 							}}
 						>
 							<LinearProgress
-								variant="determinate"
-								value={deviceProgress}
+								variant="indeterminate"
 								sx={{
 									height: 6,
 									borderRadius: 5,
@@ -252,29 +249,26 @@ export function StatusFooter({ open, devices, onStop, version = "v1.1" }: Status
 							variant="caption"
 							fontWeight={700}
 							sx={{
-								minWidth: 35,
+								whiteSpace: "nowrap",
 							}}
 						>
-							{deviceProgress}%
+							Syncing...
 						</Typography>
 
-						{/* Stop */}
-						<span>
-							<IconButton
-								size="small"
-								onClick={() => onStop?.(device.deviceId)}
-								title="Stop"
-								sx={{
-									width: 26,
-									height: 26,
-									ml: "auto",
-
-									color: "error.main",
-								}}
-							>
-								<CloseIcon fontSize="small" />
-							</IconButton>
-						</span>
+						{/* STOP */}
+						<IconButton
+							size="small"
+							onClick={() => onStop?.(device.deviceId)}
+							title="Stop"
+							sx={{
+								width: 26,
+								height: 26,
+								ml: "auto",
+								color: "error.main",
+							}}
+						>
+							<CloseIcon fontSize="small" />
+						</IconButton>
 					</>
 				)}
 
@@ -296,7 +290,7 @@ export function StatusFooter({ open, devices, onStop, version = "v1.1" }: Status
 						/>
 
 						<Typography variant="caption" fontWeight={700} color="error.main">
-							{device.message || "Error"}
+							{device.message || "Sync failed"}
 						</Typography>
 					</Box>
 				)}
@@ -319,7 +313,7 @@ export function StatusFooter({ open, devices, onStop, version = "v1.1" }: Status
 						/>
 
 						<Typography variant="caption" fontWeight={700} color="success.main">
-							{device.message || "Successful"}
+							{device.message || "Sync completed successfully"}
 						</Typography>
 					</Box>
 				)}
@@ -443,53 +437,46 @@ export function StatusFooter({ open, devices, onStop, version = "v1.1" }: Status
 
 				{/* PROGRESS ONLY WHEN RUNNING */}
 
+				{/* LOADING ONLY WHEN RUNNING */}
+
 				{isRunning && (
 					<>
-						<Box
+						<LinearProgress
+							variant="indeterminate"
 							sx={{
 								width: {
 									xs: 120,
 									sm: 220,
 									md: 300,
 								},
+								height: 6,
+								borderRadius: 5,
 							}}
-						>
-							<LinearProgress
-								variant="determinate"
-								value={progress}
-								sx={{
-									height: 6,
-									borderRadius: 5,
-								}}
-							/>
-						</Box>
+						/>
 
 						<Typography
 							variant="caption"
 							fontWeight={700}
 							sx={{
-								minWidth: 35,
+								whiteSpace: "nowrap",
 							}}
 						>
-							{progress}%
+							Syncing...
 						</Typography>
+
 						{/* STOP CURRENT RUNNING */}
-
-						{isRunning && (
-							<IconButton
-								size="small"
-								onClick={() => onStop?.(activeDevice.deviceId)}
-								title="Stop"
-								sx={{
-									width: 24,
-									height: 24,
-
-									color: "error.main",
-								}}
-							>
-								<CloseIcon fontSize="small" />
-							</IconButton>
-						)}
+						<IconButton
+							size="small"
+							onClick={() => onStop?.(activeDevice.deviceId)}
+							title="Stop"
+							sx={{
+								width: 24,
+								height: 24,
+								color: "error.main",
+							}}
+						>
+							<CloseIcon fontSize="small" />
+						</IconButton>
 					</>
 				)}
 

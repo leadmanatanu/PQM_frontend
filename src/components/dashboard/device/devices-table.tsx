@@ -150,9 +150,6 @@ export function DevicesTable({
 		return rows.map((device) => device.id);
 	}, [rows]);
 
-	// const visibleDeviceIds = React.useMemo(() => {
-	// 	return rows.map((device) => String(device.id));
-	// }, [rows]);
 
 	const visibleDeviceIds = React.useMemo(() => {
 		return rows.map((device) => device.id);

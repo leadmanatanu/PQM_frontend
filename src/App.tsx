@@ -13,53 +13,46 @@ import { Layout as AuthLayout } from "./components/auth/layout";
 import { LocalizationProvider } from "./components/core/localization-provider";
 import { ThemeProvider } from "./components/core/theme-provider/theme-provider";
 import { UserProvider } from "./contexts/user-context";
+import { SignalRProvider } from "./managers/SignalRProvider";
 
 import "@/styles/global.css";
 
 import { useEffect } from "react";
 
 export default function App() {
-	useEffect(() => {
-		const handleBeforeUnload = () => {
-			// Intentionally empty.
-		};
-
-		window.addEventListener("beforeunload", handleBeforeUnload);
-
-		return () => {
-			window.removeEventListener("beforeunload", handleBeforeUnload);
-		};
-	}, []);
+	
 
 	return (
 		<LocalizationProvider>
 			<UserProvider>
 				<ThemeProvider>
-					<BrowserRouter>
-						<Routes>
-							{/* Auth Routes */}
-							<Route path="/auth/sign-in" element={<SignInPage />} />
-							<Route path="/auth/sign-up" element={<SignUpPage />} />
-							<Route path="/auth/reset-password" element={<ResetPasswordPage />} />
+					<SignalRProvider>
+						<BrowserRouter>
+							<Routes>
+								{/* Auth Routes */}
+								<Route path="/auth/sign-in" element={<SignInPage />} />
+								<Route path="/auth/sign-up" element={<SignUpPage />} />
+								<Route path="/auth/reset-password" element={<ResetPasswordPage />} />
 
-							{/* Dashboard Layout Wrapper */}
-							<Route element={<DashboardLayout />}>
-								<Route path="/dashboard/devices" element={<DevicesPage />} />
-								<Route path="/dashboard/scheduling" element={<SchedulingPage />} />
-								<Route path="/dashboard/liveReadings" element={<LiveReadingsPage />} />
+								{/* Dashboard Layout Wrapper */}
+								<Route element={<DashboardLayout />}>
+									<Route path="/dashboard/devices" element={<DevicesPage />} />
+									<Route path="/dashboard/scheduling" element={<SchedulingPage />} />
+									<Route path="/dashboard/liveReadings" element={<LiveReadingsPage />} />
 
-								<Route path="/dashboard/report" element={<ReportPage />} />
-								{/* Redirect /dashboard to /dashboard/devices */}
-								<Route path="/dashboard" element={<Navigate to="/dashboard/devices" replace />} />
-							</Route>
+									<Route path="/dashboard/report" element={<ReportPage />} />
+									{/* Redirect /dashboard to /dashboard/devices */}
+									<Route path="/dashboard" element={<Navigate to="/dashboard/devices" replace />} />
+								</Route>
 
-							{/* Home redirect */}
-							<Route path="/" element={<Navigate to="/dashboard/devices" replace />} />
+								{/* Home redirect */}
+								<Route path="/" element={<Navigate to="/dashboard/devices" replace />} />
 
-							{/* Fallback */}
-							<Route path="*" element={<NotFoundPage />} />
-						</Routes>
-					</BrowserRouter>
+								{/* Fallback */}
+								<Route path="*" element={<NotFoundPage />} />
+							</Routes>
+						</BrowserRouter>
+					</SignalRProvider>
 				</ThemeProvider>
 			</UserProvider>
 		</LocalizationProvider>

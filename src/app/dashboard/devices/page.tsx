@@ -36,47 +36,7 @@ export default function Page(): React.JSX.Element {
 	const [devices, setDevices] = useState<Device[]>([]);
 
 	// running sync
-	const [runningDevices, setRunningDevices] = React.useState<DeviceRun[]>([
-		{
-			deviceId: 5,
-			deviceName: "Device 5",
-			progress: 60,
-			status: "loading",
-		},
-		{
-			deviceId: 6,
-			deviceName: "Device 6",
-			progress: 60,
-			status: "loading",
-		},
-		{
-			deviceId: 7,
-			deviceName: "Device 7",
-			progress: 98,
-			status: "loading",
-		},
-		{
-			deviceId: 8,
-			deviceName: "Device 8",
-			progress: 70,
-			status: "error",
-			message: "Error",
-		},
-
-		{
-			deviceId: 10,
-			deviceName: "Device 10",
-			progress: 100,
-			status: "success",
-			message: "Successful",
-		},
-		{
-			deviceId: 110,
-			deviceName: "Device 110",
-			progress: 95,
-			status: "loading",
-		},
-	]);
+	const [runningDevices, setRunningDevices] = React.useState<DeviceRun[]>([]);
 
 	const [editingDevice, setEditingDevice] = useState<Device | null>(null);
 
@@ -94,7 +54,6 @@ export default function Page(): React.JSX.Element {
 	const [rowsPerPage, setRowsPerPage] = useState(10);
 
 	const [selectedDeviceIds, setSelectedDeviceIds] = useState<Set<number>>(new Set());
-	// const { connectionStatus } = useDeviceConnectionStatus(deviceIds);
 
 	// stop functuionn
 	const handleStop = (deviceId: number) => {
@@ -353,25 +312,108 @@ export default function Page(): React.JSX.Element {
 	// Sync device now
 	// ---------------------------------------------------------
 	const handleSyncNow = async (deviceId: number) => {
+		console.log("🚀 Starting sync for device:", deviceId);
+
+		// Find device name
+		const device = devices.find((item) => item.id === deviceId);
+
+		// ---------------------------------------------------------
+		// 1. Keep device subscribed during long-running sync
+		// ---------------------------------------------------------
+		syncDeviceManager.add(deviceId);
+
+		// ---------------------------------------------------------
+		// 2. Start table loading
+		// ---------------------------------------------------------
+		setSyncingDeviceIds((prev) => {
+			const next = new Set(prev);
+			next.add(deviceId);
+			return next;
+		});
+
+		// ---------------------------------------------------------
+		// 3. IMPORTANT:
+		// Add device to StatusFooter immediately
+		// ---------------------------------------------------------
+		setRunningDevices((prev) => {
+			// Prevent duplicate entry
+			const exists = prev.some((item) => item.deviceId === deviceId);
+
+			if (exists) {
+				return prev.map((item) =>
+					item.deviceId === deviceId
+						? {
+								...item,
+								status: "loading",
+								message: undefined,
+								progress: 0,
+							}
+						: item
+				);
+			}
+
+			return [
+				...prev,
+				{
+					deviceId,
+					deviceName: device?.name || `Device ${deviceId}`,
+					progress: 0,
+					status: "loading",
+				},
+			];
+		});
+
 		try {
-			console.log("🚀 Starting sync for device:", deviceId);
+			// ---------------------------------------------------------
+			// 4. Start backend sync
+			// ---------------------------------------------------------
+			const result = await syncDeviceNow(deviceId);
 
-			// IMPORTANT:
-			// Keep device subscribed during long-running sync
-			syncDeviceManager.add(deviceId);
+			console.log("📡 Sync response:", result);
 
-			setSyncingDeviceIds((prev) => {
-				const next = new Set(prev);
-				next.add(deviceId);
-				return next;
-			});
+			// ---------------------------------------------------------
+			// 5. Backend accepted sync
+			// ---------------------------------------------------------
+			if (result?.status === true) {
+				console.log("✅ Sync request accepted:", deviceId);
 
-			// Start backend sync
-			await syncDeviceNow(deviceId);
+				setSnackbarMessage(result?.message || "Sync started successfully.");
+				setSnackbarSeverity("success");
+				setSnackbarOpen(true);
+			} else {
+				// ---------------------------------------------------------
+				// Backend immediately returned status=false
+				// ---------------------------------------------------------
+				console.error("❌ Sync failed:", result);
 
-			console.log("✅ Sync request accepted for device:", deviceId);
+				syncDeviceManager.remove(deviceId);
 
+				setSyncingDeviceIds((prev) => {
+					const next = new Set(prev);
+					next.delete(deviceId);
+					return next;
+				});
+
+				setRunningDevices((prev) =>
+					prev.map((item) =>
+						item.deviceId === deviceId
+							? {
+									...item,
+									status: "error",
+									message: result?.message || "Sync failed",
+								}
+							: item
+					)
+				);
+
+				setSnackbarMessage(result?.message || "Sync failed.");
+				setSnackbarSeverity("error");
+				setSnackbarOpen(true);
+			}
 		} catch (error) {
+			// ---------------------------------------------------------
+			// API / Network error
+			// ---------------------------------------------------------
 			console.error(`❌ Failed to start sync for device ${deviceId}:`, error);
 
 			syncDeviceManager.remove(deviceId);
@@ -381,6 +423,22 @@ export default function Page(): React.JSX.Element {
 				next.delete(deviceId);
 				return next;
 			});
+
+			setRunningDevices((prev) =>
+				prev.map((item) =>
+					item.deviceId === deviceId
+						? {
+								...item,
+								status: "error",
+								message: "Sync failed",
+							}
+						: item
+				)
+			);
+
+			setSnackbarMessage("Sync failed. Please try again.");
+			setSnackbarSeverity("error");
+			setSnackbarOpen(true);
 		}
 	};
 

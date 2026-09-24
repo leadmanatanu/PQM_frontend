@@ -155,8 +155,7 @@ export function DeviceRTable({
 				const panelId = group.profileId;
 				const isOpen = expanded === panelId;
 
-				// const errorCount = group.items.filter((item) => item.error || item.value === "N/A").length;
-
+				
 				const items = group.items ?? [];
 
 				const errorCount = items.filter((item) => item.error || item.value === "N/A").length;
