@@ -47,6 +47,42 @@ export const fetchDeviceReading = async (
 	}
 };
 
+// Fetch profiles available for the selected device
+export const fetchProfilesByDevice = async (
+	deviceId: string | number
+): Promise<any | null> => {
+	try {
+		const { data } = await apiClient.get<ApiResponse>("/report/profiles", {
+			params: { deviceId },
+		});
+
+		console.log("[fetchProfilesByDevice] response:", data);
+
+		return data;
+	} catch (error) {
+		console.error("Error fetching profiles by device:", error);
+		return null;
+	}
+};
+
+// Fetch parameters belonging to the selected profile
+export const fetchParametersByProfile = async (
+	profileId: string | number
+): Promise<any | null> => {
+	try {
+		const { data } = await apiClient.get<ApiResponse>("/report/parameters", {
+			params: { profileId },
+		});
+
+		console.log("[fetchParametersByProfile] response:", data);
+
+		return data;
+	} catch (error) {
+		console.error("Error fetching parameters by profile:", error);
+		return null;
+	}
+};
+
 // Fetch aggregated report readings (5, 15, 30 min intervals), grouped by profile.
 // No pagination — backend now returns the full grouped result set in one call.
 export const fetchAggregatedReport = async (

@@ -4,11 +4,16 @@ import Box from "@mui/material/Box";
 import * as React from "react";
 import { useEffect, useState } from "react";
 
-import { fetchDeviceParameter, fetchDevices, fetchProfiles, ProfileItem } from "../../../api/device";
+import { fetchDevices, ProfileItem } from "../../../api/device";
 import { Device } from "../../../components/dashboard/device/devices-table";
 import { ReportFilters } from "../../../components/dashboard/report/report-selection";
 import { DeviceRTable } from "../../../components/dashboard/report/report-table";
-import { exportAggregatedReport, fetchAggregatedReport } from "../../../services/logs.service";
+import {
+	exportAggregatedReport,
+	fetchAggregatedReport,
+	fetchParametersByProfile,
+	fetchProfilesByDevice,
+} from "../../../services/logs.service";
 
 interface ReportGroup {
 	profileId: number | null;
@@ -42,69 +47,130 @@ export default function Page(): React.JSX.Element {
 	} | null>(null);
 
 	useEffect(() => {
-		const loadInitialData = async () => {
-			setLoading("devices");
-			try {
-				const [fetchedDevices, fetchedProfiles] = await Promise.all([fetchDevices(), fetchProfiles()]);
-				setDevices(fetchedDevices ?? []);
-				setProfiles(fetchedProfiles ?? []);
-			} catch (error) {
-				console.error("Failed to fetch initial data:", error);
-			} finally {
-				setLoading(null);
-			}
-		};
-		loadInitialData();
-	}, []);
+    const loadInitialData = async () => {
+        setLoading("devices");
 
-	const loadParameters = async (deviceId: string | number, profileIds: number[]) => {
-		if (!deviceId || Number(deviceId) <= 0) {
-			setDevParamArr([]);
-			setObjectTypes(["All"]);
-			return;
-		}
+        try {
+            const fetchedDevices = await fetchDevices();
 
-		setLoading("parameters");
+            setDevices(fetchedDevices ?? []);
+            setProfiles([]);
+        } catch (error) {
+            console.error("Failed to fetch devices:", error);
+        } finally {
+            setLoading(null);
+        }
+    };
 
-		try {
-			const responses = profileIds.length
-				? await Promise.all(profileIds.map((id) => fetchDeviceParameter(deviceId, id)))
-				: [await fetchDeviceParameter(deviceId, null)];
-
-			const params = responses.flatMap((r) => r?.data ?? []);
-			const seen = new Set<string>();
-
-			const uniqueParams = params.filter((p: any) => {
-				if (p.isVisible === false || seen.has(p.name)) return false;
-				seen.add(p.name);
-				return true;
-			});
-
-			setDevParamArr(uniqueParams);
-			setObjectTypes(["All", ...Array.from(new Set(uniqueParams.map((p) => p.objectType).filter(Boolean)))]);
-		} catch (error) {
-			console.error("Failed to fetch device parameters:", error);
-			setDevParamArr([]);
-			setObjectTypes(["All"]);
-		} finally {
-			setLoading(null);
-		}
-	};
+    loadInitialData();
+}, []);
 
 	const handleDeviceSelection = async (id: string | number) => {
-		setSelectedDeviceId(id);
-		setSelectedProfileIds([]);
-		setSelectedObjectType("All");
-		setHasSearched(false);
-		setReportGroups([]);
-		setLastSearchParams(null);
-		await loadParameters(id, []);
-	};
+    setSelectedDeviceId(id);
+    setSelectedProfileIds([]);
+    setSelectedObjectType("All");
+    setDevParamArr([]);
+    setObjectTypes(["All"]);
+    setHasSearched(false);
+    setReportGroups([]);
+    setLastSearchParams(null);
 
+    if (!id || Number(id) <= 0) {
+        setProfiles([]);
+        return;
+    }
+
+    setLoading("profiles");
+
+    try {
+        const response = await fetchProfilesByDevice(id);
+
+        const deviceProfiles: ProfileItem[] = response?.data ?? [];
+
+        // Load profiles for this device
+        setProfiles(deviceProfiles);
+
+        // Do NOT select profiles automatically
+        setSelectedProfileIds([]);
+
+        // Do NOT load parameters yet
+        setDevParamArr([]);
+        setObjectTypes(["All"]);
+    } catch (error) {
+        console.error(
+            "Failed to fetch profiles for device:",
+            error
+        );
+
+        setProfiles([]);
+        setSelectedProfileIds([]);
+        setDevParamArr([]);
+        setObjectTypes(["All"]);
+    } finally {
+        setLoading(null);
+    }
+};
 	const handleProfileSelection = async (profileIds: number[]) => {
-		setSelectedProfileIds(profileIds);
-		await loadParameters(selectedDeviceId, profileIds);
-	};
+    setSelectedProfileIds(profileIds);
+
+    if (!selectedDeviceId || Number(selectedDeviceId) <= 0) {
+        setDevParamArr([]);
+        setObjectTypes(["All"]);
+        return;
+    }
+
+    if (profileIds.length === 0) {
+        setDevParamArr([]);
+        setObjectTypes(["All"]);
+        return;
+    }
+
+    setLoading("parameters");
+
+    try {
+        const responses = await Promise.all(
+            profileIds.map((profileId) =>
+                fetchParametersByProfile(profileId)
+            )
+        );
+
+        const allParameters = responses.flatMap(
+            (response) => response?.data ?? []
+        );
+
+        // Remove duplicate parameters by ID
+        const uniqueParameters = Array.from(
+            new Map(
+                allParameters.map((parameter: any) => [
+                    parameter.id,
+                    parameter,
+                ])
+            ).values()
+        );
+
+        setDevParamArr(uniqueParameters);
+
+        const uniqueObjectTypes = Array.from(
+            new Set(
+                uniqueParameters
+                    .map((parameter: any) => parameter.objectType)
+                    .filter(Boolean)
+            )
+        );
+
+        setObjectTypes(["All", ...uniqueObjectTypes]);
+    } catch (error) {
+        console.error(
+            "Failed to fetch parameters for selected profiles:",
+            error
+        );
+
+        setDevParamArr([]);
+        setObjectTypes(["All"]);
+    } finally {
+        setLoading(null);
+    }
+};
 
 	const handleObjectTypeSelection = (objType: string) => {
 		setSelectedObjectType(objType);
