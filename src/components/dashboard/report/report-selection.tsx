@@ -469,7 +469,7 @@ export function ReportFilters({
 								disabled={!canExport || isSearching}
 								sx={{ height: 38, px: 2, textTransform: "none", fontWeight: 600 }}
 							>
-								Export CSV
+								Export Excel
 							</Button>
 							<Button
 								variant="contained"
