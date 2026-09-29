@@ -29,6 +29,8 @@ export default function Page(): React.JSX.Element {
 	// Grouped report data (no more pagination state)
 	const [reportGroups, setReportGroups] = useState<ReportGroup[]>([]);
 	const [hasSearched, setHasSearched] = useState<boolean>(false);
+	const [blockLoadPage, setBlockLoadPage] = useState<number>(1);
+	const BLOCK_LOAD_PAGE_SIZE = 96;
 	const [lastSearchParams, setLastSearchParams] = useState<{
 		deviceId: string | number | null;
 		profileIds: number[];
@@ -109,13 +111,14 @@ export default function Page(): React.JSX.Element {
 	};
 
 	const executeSearch = async (
-		deviceId: string | number | null,
-		profileIds: number[],
-		objectType: string | null,
-		paramIds: (string | number)[],
-		startDate: string,
-		endDate: string,
-		intervalMinutes: number
+    deviceId: string | number | null,
+    profileIds: number[],
+    objectType: string | null,
+    paramIds: (string | number)[],
+    startDate: string,
+    endDate: string,
+    intervalMinutes: number,
+    pageNumber: number = 1
 	) => {
 		setLoading("search");
 		try {
@@ -126,7 +129,9 @@ export default function Page(): React.JSX.Element {
 				paramIds.length > 0 ? paramIds : null,
 				startDate,
 				endDate,
-				intervalMinutes
+				intervalMinutes,
+				pageNumber,
+				BLOCK_LOAD_PAGE_SIZE
 			);
 
 			const payload = response?.data;
@@ -144,15 +149,17 @@ export default function Page(): React.JSX.Element {
 	};
 
 	const handleSearchSubmit = (params: {
-		deviceId: string | number | null;
-		profileIds: number[];
-		objectType: string | null;
-		paramIds: (string | number)[];
-		startDate: string;
-		endDate: string;
-		intervalMinutes: number;
+    deviceId: string | number | null;
+    profileIds: number[];
+    objectType: string | null;
+    paramIds: (string | number)[];
+    startDate: string;
+    endDate: string;
+    intervalMinutes: number;
 	}) => {
+		setBlockLoadPage(1);
 		setLastSearchParams(params);
+
 		executeSearch(
 			params.deviceId,
 			params.profileIds,
@@ -160,9 +167,27 @@ export default function Page(): React.JSX.Element {
 			params.paramIds,
 			params.startDate,
 			params.endDate,
-			params.intervalMinutes
+			params.intervalMinutes,
+			1
 		);
 	};
+
+	const handleBlockLoadPageChange = (page: number) => {
+    if (!lastSearchParams) return;
+
+    setBlockLoadPage(page);
+
+    executeSearch(
+        lastSearchParams.deviceId,
+        lastSearchParams.profileIds,
+        lastSearchParams.objectType,
+        lastSearchParams.paramIds,
+        lastSearchParams.startDate,
+        lastSearchParams.endDate,
+        lastSearchParams.intervalMinutes,
+        page
+    );
+};
 
 	const handleExport = () => {
 		if (!lastSearchParams || !lastSearchParams.deviceId) return;
@@ -209,7 +234,7 @@ export default function Page(): React.JSX.Element {
 			/>
 
 			{/* Grouped-by-profile readings, each group independently collapsible/scrollable */}
-			<DeviceRTable groups={reportGroups} hasSearched={hasSearched} isSearching={loading === "search"} />
+			<DeviceRTable groups={reportGroups} hasSearched={hasSearched} isSearching={loading === "search"} onBlockLoadPageChange={handleBlockLoadPageChange} />
 		</Box>
 	);
 }

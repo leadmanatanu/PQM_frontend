@@ -18,6 +18,7 @@ import Typography from '@mui/material/Typography';
 import dayjs from 'dayjs';
 import * as React from 'react';
 import { useMemo, useState } from 'react';
+import Button from '@mui/material/Button';
 
 interface Reading {
     id: number | string;
@@ -29,10 +30,18 @@ interface Reading {
     dateStamp: string | null;
 }
 
+interface ReportPagination {
+    pageNumber: number;
+    pageSize: number;
+    totalTimestamps: number;
+    totalPages: number;
+}
+
 interface ReportGroup {
     profileId: number | null;
     profileName: string | null;
     items: Reading[];
+    pagination?: ReportPagination | null;
 }
 
 interface ReportRTableProps {
@@ -41,6 +50,7 @@ interface ReportRTableProps {
     isSearching?: boolean;
     /** Max height of each profile group's scrollable table area */
     groupMaxHeight?: number | string;
+    onBlockLoadPageChange?: (page: number) => void;
 }
 
 // Pivot helper to construct matrix of [Parameter x Timestamp] for a single group's items
@@ -262,6 +272,7 @@ export function DeviceRTable({
     hasSearched = false,
     isSearching = false,
     groupMaxHeight = 420,
+    onBlockLoadPageChange,
 }: ReportRTableProps): React.JSX.Element {
     // eslint-disable-next-line no-console
     console.log('[DeviceRTable] groups prop received:', groups);
@@ -271,8 +282,10 @@ export function DeviceRTable({
     const [expandedKey, setExpandedKey] = useState<string | null>(null);
 
     React.useEffect(() => {
-        setExpandedKey(groups.length === 1 ? groupKey(groups[0], 0) : null);
-    }, [groups]);
+    if (groups.length === 1) {
+        setExpandedKey(groupKey(groups[0], 0));
+    }
+}, [groups]);
 
     const handleToggle = (key: string) => (_e: React.SyntheticEvent, isExpanded: boolean) => {
         setExpandedKey(isExpanded ? key : null);
@@ -315,6 +328,9 @@ export function DeviceRTable({
                 const key = groupKey(group, idx);
                 const label = group.profileName || 'Unassigned Profile';
 
+                const isBlockLoadProfile =
+                label.trim().toLowerCase() === 'blockload profile';
+
                 return (
                     <Accordion
                         key={key}
@@ -334,8 +350,64 @@ export function DeviceRTable({
                             </Stack>
                         </AccordionSummary>
                         <AccordionDetails sx={{ p: 0 }}>
-                            <ProfileGroupTable group={group} maxHeight={groupMaxHeight} />
-                        </AccordionDetails>
+    <ProfileGroupTable
+        group={group}
+        maxHeight={groupMaxHeight}
+    />
+
+    {isBlockLoadProfile &&
+        group.pagination &&
+        group.pagination.totalPages > 1 && (
+            <Box
+                sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 2,
+                    py: 1.5,
+                    borderTop: '1px solid',
+                    borderColor: 'divider',
+                }}
+            >
+                <Button
+                    variant="outlined"
+                    size="small"
+                    disabled={group.pagination.pageNumber <= 1}
+                    onClick={() =>
+                        onBlockLoadPageChange?.(
+                            group.pagination!.pageNumber - 1
+                        )
+                    }
+                >
+                    Previous
+                </Button>
+
+                <Typography
+                    variant="body2"
+                    fontWeight={600}
+                >
+                    Page {group.pagination.pageNumber} of{' '}
+                    {group.pagination.totalPages}
+                </Typography>
+
+                <Button
+                    variant="outlined"
+                    size="small"
+                    disabled={
+                        group.pagination.pageNumber >=
+                        group.pagination.totalPages
+                    }
+                    onClick={() =>
+                        onBlockLoadPageChange?.(
+                            group.pagination!.pageNumber + 1
+                        )
+                    }
+                >
+                    Next
+                </Button>
+            </Box>
+        )}
+</AccordionDetails>
                     </Accordion>
                 );
             })}

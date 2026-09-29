@@ -50,16 +50,18 @@ export const fetchDeviceReading = async (
 // Fetch aggregated report readings (5, 15, 30 min intervals), grouped by profile.
 // No pagination — backend now returns the full grouped result set in one call.
 export const fetchAggregatedReport = async (
-	deviceId?: string | number | null,
-	profileIds?: number[],
-	objectType?: string | null,
-	parameterIds?: (string | number)[] | null,
-	startDate?: string,
-	endDate?: string,
-	intervalMinutes: number = 15
+    deviceId?: string | number | null,
+    profileIds?: number[],
+    objectType?: string | null,
+    parameterIds?: (string | number)[] | null,
+    startDate?: string,
+    endDate?: string,
+    intervalMinutes: number = 15,
+    pageNumber: number = 1,
+    pageSize: number = 96
 ): Promise<any | null> => {
 	try {
-		const params: Record<string, any> = { intervalMinutes };
+		const params: Record<string, any> = { intervalMinutes, pageNumber, pageSize };
 		if (deviceId && Number(deviceId) > 0) params.deviceId = deviceId;
 		if (profileIds && profileIds.length > 0) {
 			params.profileIds = profileIds.map(Number).filter((id) => id > 0);
