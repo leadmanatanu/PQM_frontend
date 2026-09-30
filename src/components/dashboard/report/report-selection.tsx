@@ -467,7 +467,19 @@ export function ReportFilters({
 								size="small"
 								onClick={onExport}
 								disabled={!canExport || isSearching}
-								sx={{ height: 38, px: 2, textTransform: "none", fontWeight: 600 }}
+								sx={{ height: 38, px: 2, textTransform: "none", fontWeight: 600,
+									"&:focus": {
+										backgroundColor: "transparent",
+									},
+
+									"&:focus-visible": {
+										backgroundColor: "transparent",
+									},
+
+									"&:active": {
+										backgroundColor: "transparent",
+									},
+								 }}
 							>
 								Export Excel
 							</Button>

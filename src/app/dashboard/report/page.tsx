@@ -1,18 +1,21 @@
 "use client";
 
+import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
+import Snackbar from "@mui/material/Snackbar";
 import * as React from "react";
 import { useEffect, useState } from "react";
 
 import { fetchDevices, ProfileItem } from "../../../api/device";
 import { Device } from "../../../components/dashboard/device/devices-table";
+import { StatusFooter } from "../../../components/dashboard/footer/StatusFooter";
 import { ReportFilters } from "../../../components/dashboard/report/report-selection";
 import { DeviceRTable } from "../../../components/dashboard/report/report-table";
 import {
-	exportAggregatedReport,
-	fetchAggregatedReport,
-	fetchParametersByProfile,
-	fetchProfilesByDevice,
+    exportAggregatedReport,
+    fetchAggregatedReport,
+    fetchParametersByProfile,
+    fetchProfilesByDevice,
 } from "../../../services/logs.service";
 
 interface ReportGroup {
@@ -30,6 +33,8 @@ export default function Page(): React.JSX.Element {
 	const [selectedObjectType, setSelectedObjectType] = useState<string>("All");
 	const [objectTypes, setObjectTypes] = useState<string[]>(["All"]);
 	const [devParamArr, setDevParamArr] = useState<any[]>([]);
+    const [showExportSuccess, setShowExportSuccess] = useState(false);
+    const [isExporting, setIsExporting] = useState(false);
 
 	// Grouped report data (no more pagination state)
 	const [reportGroups, setReportGroups] = useState<ReportGroup[]>([]);
@@ -255,18 +260,69 @@ export default function Page(): React.JSX.Element {
     );
 };
 
-	const handleExport = () => {
-		if (!lastSearchParams || !lastSearchParams.deviceId) return;
-		exportAggregatedReport(
-			lastSearchParams.deviceId,
-			lastSearchParams.profileIds,
-			lastSearchParams.objectType,
-			lastSearchParams.paramIds,
-			lastSearchParams.startDate,
-			lastSearchParams.endDate,
-			lastSearchParams.intervalMinutes
-		);
-	};
+	const handleExport = async () => {
+    if (!lastSearchParams || !lastSearchParams.deviceId) return;
+
+    const selectedDevice = devices.find(
+        (device) => String(device.id) === String(lastSearchParams.deviceId)
+    );
+
+    if (!selectedDevice) {
+        console.error("Selected device not found.");
+        return;
+    }
+
+    const fileName = `${selectedDevice.name}_${selectedDevice.serialNumber}.xlsx`;
+
+    try {
+        // 1. Open Save As window first
+        const fileHandle = await window.showSaveFilePicker({
+            suggestedName: fileName,
+            types: [
+                {
+                    description: "Excel Files",
+                    accept: {
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+                            [".xlsx"],
+                    },
+                },
+            ],
+        });
+
+        // 2. Show loading state after user clicks Save
+        setIsExporting(true);
+
+        // 3. Call backend only after the user has selected the save location
+        const blob = await exportAggregatedReport(
+            lastSearchParams.deviceId,
+            lastSearchParams.profileIds,
+            lastSearchParams.objectType,
+            lastSearchParams.paramIds,
+            lastSearchParams.startDate,
+            lastSearchParams.endDate,
+            lastSearchParams.intervalMinutes
+        );
+
+        // 4. Write the Excel file to the selected location
+        const writable = await fileHandle.createWritable();
+
+        await writable.write(blob);
+
+        await writable.close();
+
+        // 5. Show success only after the file is actually written
+        setShowExportSuccess(true);
+    } catch (error: any) {
+        if (error?.name === "AbortError") {
+            console.log("Save operation cancelled by user.");
+            return;
+        }
+
+        console.error("Error exporting aggregated report:", error);
+    } finally {
+        setIsExporting(false);
+    }
+};
 
 	return (
 		<Box
@@ -293,7 +349,7 @@ export default function Page(): React.JSX.Element {
 				onObjectTypeSelect={handleObjectTypeSelection}
 				onSearch={handleSearchSubmit}
 				onExport={handleExport}
-				canExport={!!lastSearchParams?.deviceId && loading !== "search"}
+				canExport={!!lastSearchParams?.deviceId && !isExporting}
 				isLoadingProfiles={loading === "profiles"}
 				isLoadingParams={loading === "parameters"}
 				isSearching={loading === "search"}
@@ -301,6 +357,29 @@ export default function Page(): React.JSX.Element {
 
 			{/* Grouped-by-profile readings, each group independently collapsible/scrollable */}
 			<DeviceRTable groups={reportGroups} hasSearched={hasSearched} isSearching={loading === "search"} onBlockLoadPageChange={handleBlockLoadPageChange} />
+
+            <Snackbar
+    open={showExportSuccess}
+    autoHideDuration={3000}
+    onClose={() => setShowExportSuccess(false)}
+    anchorOrigin={{
+        vertical: "bottom",
+        horizontal: "right",
+    }}
+>
+    <Alert
+        onClose={() => setShowExportSuccess(false)}
+        severity="success"
+        variant="filled"
+        sx={{ width: "100%" }}
+    >
+        File successfully saved
+    </Alert>
+</Snackbar>
+<StatusFooter
+    open={isExporting}
+    mode="report"
+/>
 		</Box>
 	);
 }

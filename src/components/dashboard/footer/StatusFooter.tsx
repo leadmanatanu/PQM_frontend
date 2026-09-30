@@ -12,7 +12,12 @@ import IconButton from "@mui/material/IconButton";
 import LinearProgress from "@mui/material/LinearProgress";
 import Typography from "@mui/material/Typography";
 
-export type DeviceRunStatus = "loading" | "success" | "error" | "pending" | "stopped";
+export type DeviceRunStatus =
+	| "loading"
+	| "success"
+	| "error"
+	| "pending"
+	| "stopped";
 
 export interface DeviceRun {
 	deviceId: number;
@@ -24,13 +29,97 @@ export interface DeviceRun {
 
 interface StatusFooterProps {
 	open: boolean;
-	devices: DeviceRun[];
+
+	// Footer operation
+	mode?: "sync" | "report";
+
+	// Device sync data
+	devices?: DeviceRun[];
+
+	// Device sync stop action
 	onStop?: (deviceId: number) => void;
+
 	version?: string;
 }
 
-export function StatusFooter({ open, devices, onStop, version = "v1.1" }: StatusFooterProps): React.JSX.Element | null {
+export function StatusFooter({
+	open,
+	mode = "sync",
+	devices = [],
+	onStop,
+	version = "v1.1",
+}: StatusFooterProps): React.JSX.Element | null {
 	const [expanded, setExpanded] = React.useState(false);
+
+	// ==================================================
+	// REPORT EXPORT FOOTER
+	// ==================================================
+
+	if (mode === "report") {
+		if (!open) {
+			return null;
+		}
+
+		return (
+			<Box
+				sx={{
+					position: "fixed",
+					bottom: 0,
+					left: {
+						xs: 0,
+						md: "var(--SideNav-width)",
+					},
+					right: 0,
+					height: 42,
+					zIndex: 1300,
+					display: "flex",
+					alignItems: "center",
+					gap: 2,
+					px: 2,
+					backgroundColor: "#fff",
+					borderTop: "1px solid #d9dce3",
+					boxShadow: "0 -2px 8px rgba(0,0,0,0.06)",
+				}}
+			>
+				<Typography
+					variant="body2"
+					fontWeight={600}
+					noWrap
+				>
+					Creating report...
+				</Typography>
+
+				<LinearProgress
+					variant="indeterminate"
+					sx={{
+						width: {
+							xs: 120,
+							sm: 220,
+							md: 300,
+						},
+						height: 6,
+						borderRadius: 5,
+					}}
+				/>
+
+				<Typography
+					variant="caption"
+					fontWeight={700}
+					color="text.secondary"
+					sx={{
+						marginLeft: "auto",
+						whiteSpace: "nowrap",
+					}}
+				>
+					PQM {version}
+				</Typography>
+			</Box>
+		);
+	}
+
+	// ==================================================
+	// DEVICE SYNC FOOTER
+	// ==================================================
 
 	if (!open || devices.length === 0) {
 		return (
@@ -54,11 +143,19 @@ export function StatusFooter({ open, devices, onStop, version = "v1.1" }: Status
 					boxShadow: "0 -2px 8px rgba(0,0,0,0.06)",
 				}}
 			>
-				<Typography variant="caption" fontWeight={600} color="text.secondary">
+				<Typography
+					variant="caption"
+					fontWeight={600}
+					color="text.secondary"
+				>
 					No active sync process
 				</Typography>
 
-				<Typography variant="caption" fontWeight={600} color="text.secondary">
+				<Typography
+					variant="caption"
+					fontWeight={600}
+					color="text.secondary"
+				>
 					PQM {version}
 				</Typography>
 			</Box>
@@ -77,19 +174,39 @@ export function StatusFooter({ open, devices, onStop, version = "v1.1" }: Status
 
 	const runningDevice = [...devices]
 		.reverse()
-		.find((device) => device.status === "loading" || device.status === "pending");
+		.find(
+			(device) =>
+				device.status === "loading" ||
+				device.status === "pending"
+		);
 
-	const errorDevice = [...devices].reverse().find((device) => device.status === "error");
+	const errorDevice = [...devices]
+		.reverse()
+		.find((device) => device.status === "error");
 
-	const stoppedDevice = [...devices].reverse().find((device) => device.status === "stopped");
+	const stoppedDevice = [...devices]
+		.reverse()
+		.find((device) => device.status === "stopped");
 
-	const successDevice = [...devices].reverse().find((device) => device.status === "success");
+	const successDevice = [...devices]
+		.reverse()
+		.find((device) => device.status === "success");
 
-	const activeDevice = runningDevice || errorDevice || stoppedDevice || successDevice || devices[devices.length - 1];
+	const activeDevice =
+		runningDevice ||
+		errorDevice ||
+		stoppedDevice ||
+		successDevice ||
+		devices[devices.length - 1];
 
-	const progress = Math.min(Math.max(activeDevice.progress, 0), 100);
+	const progress = Math.min(
+		Math.max(activeDevice.progress, 0),
+		100
+	);
 
-	const isRunning = activeDevice.status === "loading" || activeDevice.status === "pending";
+	const isRunning =
+		activeDevice.status === "loading" ||
+		activeDevice.status === "pending";
 
 	// --------------------------------------------------
 	// STATUS ICON
@@ -194,7 +311,9 @@ export function StatusFooter({ open, devices, onStop, version = "v1.1" }: Status
 	// --------------------------------------------------
 
 	const renderDeviceRow = (device: DeviceRun) => {
-		const deviceRunning = device.status === "loading" || device.status === "pending";
+		const deviceRunning =
+			device.status === "loading" ||
+			device.status === "pending";
 
 		return (
 			<Box
@@ -209,6 +328,7 @@ export function StatusFooter({ open, devices, onStop, version = "v1.1" }: Status
 				}}
 			>
 				{/* DEVICE NAME */}
+
 				<Typography
 					variant="caption"
 					fontWeight={600}
@@ -221,10 +341,12 @@ export function StatusFooter({ open, devices, onStop, version = "v1.1" }: Status
 						},
 					}}
 				>
-					{device.deviceName || `Device ${device.deviceId}`}
+					{device.deviceName ||
+						`Device ${device.deviceId}`}
 				</Typography>
 
 				{/* RUNNING / LOADING */}
+
 				{deviceRunning && (
 					<>
 						<Box
@@ -256,9 +378,12 @@ export function StatusFooter({ open, devices, onStop, version = "v1.1" }: Status
 						</Typography>
 
 						{/* STOP */}
+
 						<IconButton
 							size="small"
-							onClick={() => onStop?.(device.deviceId)}
+							onClick={() =>
+								onStop?.(device.deviceId)
+							}
 							title="Stop"
 							sx={{
 								width: 26,
@@ -273,6 +398,7 @@ export function StatusFooter({ open, devices, onStop, version = "v1.1" }: Status
 				)}
 
 				{/* ERROR */}
+
 				{device.status === "error" && (
 					<Box
 						sx={{
@@ -289,13 +415,18 @@ export function StatusFooter({ open, devices, onStop, version = "v1.1" }: Status
 							}}
 						/>
 
-						<Typography variant="caption" fontWeight={700} color="error.main">
+						<Typography
+							variant="caption"
+							fontWeight={700}
+							color="error.main"
+						>
 							{device.message || "Sync failed"}
 						</Typography>
 					</Box>
 				)}
 
 				{/* SUCCESS */}
+
 				{device.status === "success" && (
 					<Box
 						sx={{
@@ -312,13 +443,19 @@ export function StatusFooter({ open, devices, onStop, version = "v1.1" }: Status
 							}}
 						/>
 
-						<Typography variant="caption" fontWeight={700} color="success.main">
-							{device.message || "Sync completed successfully"}
+						<Typography
+							variant="caption"
+							fontWeight={700}
+							color="success.main"
+						>
+							{device.message ||
+								"Sync completed successfully"}
 						</Typography>
 					</Box>
 				)}
 
 				{/* STOPPED */}
+
 				{device.status === "stopped" && (
 					<Box
 						sx={{
@@ -335,13 +472,18 @@ export function StatusFooter({ open, devices, onStop, version = "v1.1" }: Status
 							}}
 						/>
 
-						<Typography variant="caption" fontWeight={700} color="error.main">
+						<Typography
+							variant="caption"
+							fontWeight={700}
+							color="error.main"
+						>
 							{device.message || "Stopped"}
 						</Typography>
 					</Box>
 				)}
 
 				{/* PENDING */}
+
 				{device.status === "pending" && (
 					<Box
 						sx={{
@@ -357,7 +499,11 @@ export function StatusFooter({ open, devices, onStop, version = "v1.1" }: Status
 							}}
 						/>
 
-						<Typography variant="caption" fontWeight={700} color="warning.main">
+						<Typography
+							variant="caption"
+							fontWeight={700}
+							color="warning.main"
+						>
 							Pending
 						</Typography>
 					</Box>
@@ -371,20 +517,14 @@ export function StatusFooter({ open, devices, onStop, version = "v1.1" }: Status
 			sx={{
 				position: "fixed",
 				bottom: 0,
-
 				left: {
 					xs: 0,
 					md: "var(--SideNav-width)",
 				},
-
 				right: 0,
-
 				zIndex: 1300,
-
 				backgroundColor: "#fff",
-
 				borderTop: "1px solid #d9dce3",
-
 				boxShadow: "0 -2px 8px rgba(0,0,0,0.06)",
 			}}
 		>
@@ -395,12 +535,9 @@ export function StatusFooter({ open, devices, onStop, version = "v1.1" }: Status
 			<Box
 				sx={{
 					height: 42,
-
 					display: "flex",
 					alignItems: "center",
-
 					gap: 1,
-
 					px: 2,
 				}}
 			>
@@ -431,11 +568,13 @@ export function StatusFooter({ open, devices, onStop, version = "v1.1" }: Status
 					}}
 				>
 					{isRunning
-						? `Sync : ${activeDevice.deviceName || `Device ${activeDevice.deviceId}`}`
-						: activeDevice.deviceName || `Device ${activeDevice.deviceId}`}
+						? `Sync : ${
+								activeDevice.deviceName ||
+								`Device ${activeDevice.deviceId}`
+							}`
+						: activeDevice.deviceName ||
+							`Device ${activeDevice.deviceId}`}
 				</Typography>
-
-				{/* PROGRESS ONLY WHEN RUNNING */}
 
 				{/* LOADING ONLY WHEN RUNNING */}
 
@@ -465,9 +604,12 @@ export function StatusFooter({ open, devices, onStop, version = "v1.1" }: Status
 						</Typography>
 
 						{/* STOP CURRENT RUNNING */}
+
 						<IconButton
 							size="small"
-							onClick={() => onStop?.(activeDevice.deviceId)}
+							onClick={() =>
+								onStop?.(activeDevice.deviceId)
+							}
 							title="Stop"
 							sx={{
 								width: 24,
@@ -483,7 +625,14 @@ export function StatusFooter({ open, devices, onStop, version = "v1.1" }: Status
 				{/* ERROR / SUCCESS / STOPPED */}
 
 				{!isRunning && (
-					<Typography variant="caption" fontWeight={700} color={getStatusColor(activeDevice.status)} noWrap>
+					<Typography
+						variant="caption"
+						fontWeight={700}
+						color={getStatusColor(
+							activeDevice.status
+						)}
+						noWrap
+					>
 						{getStatusText(activeDevice)}
 					</Typography>
 				)}
@@ -502,14 +651,24 @@ export function StatusFooter({ open, devices, onStop, version = "v1.1" }: Status
 
 					<IconButton
 						size="small"
-						onClick={() => setExpanded((prev) => !prev)}
-						title={expanded ? "Hide processes" : "Show processes"}
+						onClick={() =>
+							setExpanded((prev) => !prev)
+						}
+						title={
+							expanded
+								? "Hide processes"
+								: "Show processes"
+						}
 						sx={{
 							width: 28,
 							height: 28,
 						}}
 					>
-						{expanded ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+						{expanded ? (
+							<ExpandLessIcon fontSize="small" />
+						) : (
+							<ExpandMoreIcon fontSize="small" />
+						)}
 					</IconButton>
 
 					{/* VERSION */}

@@ -83,8 +83,8 @@ export const fetchParametersByProfile = async (
 	}
 };
 
-// Fetch aggregated report readings (5, 15, 30 min intervals), grouped by profile.
-// No pagination — backend now returns the full grouped result set in one call.
+// Fetch aggregated report readings grouped by profile.
+// BlockLoad profile is paginated by timestamp.
 export const fetchAggregatedReport = async (
     deviceId?: string | number | null,
     profileIds?: number[],
@@ -162,6 +162,7 @@ export const exportDeviceReading = (
 };
 
 // Trigger export of aggregated report (Excel)
+
 export const exportAggregatedReport = async (
     deviceId?: string | number | null,
     profileIds?: number[],
@@ -170,7 +171,7 @@ export const exportAggregatedReport = async (
     startDate?: string,
     endDate?: string,
     intervalMinutes: number = 15
-): Promise<void> => {
+): Promise<Blob> => {
     try {
         const params = new URLSearchParams();
 
@@ -204,6 +205,7 @@ export const exportAggregatedReport = async (
 
         params.append("intervalMinutes", String(intervalMinutes));
 
+        // Call backend export API
         const response = await apiClient.get(
             `/report/export?${params.toString()}`,
             {
@@ -211,39 +213,18 @@ export const exportAggregatedReport = async (
             }
         );
 
-        const blob = new Blob([response.data], {
+        // Return Excel file as Blob.
+        // Save As is handled by page.tsx.
+        return new Blob([response.data], {
             type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         });
-
-        const url = window.URL.createObjectURL(blob);
-
-        const link = document.createElement("a");
-        link.href = url;
-
-        const contentDisposition =
-            response.headers["content-disposition"];
-
-        let fileName = "download.xlsx";
-
-        if (contentDisposition) {
-            const match = contentDisposition.match(
-                /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/
-            );
-
-            if (match?.[1]) {
-                fileName = match[1].replace(/['"]/g, "");
-            }
-        }
-
-        link.download = fileName;
-
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-
-        window.URL.revokeObjectURL(url);
     } catch (error) {
-        console.error("Error exporting aggregated report:", error);
+        console.error(
+            "Error exporting aggregated report:",
+            error
+        );
+
+        throw error;
     }
 };
 // Fetch event readings

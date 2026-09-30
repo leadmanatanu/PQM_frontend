@@ -22,7 +22,7 @@ import { AddDeviceForm } from "../../../components/dashboard/device/add-device-f
 import { DevicesFilters } from "../../../components/dashboard/device/devices-filters";
 import { DevicesTable } from "../../../components/dashboard/device/devices-table";
 import type { Device } from "../../../components/dashboard/device/devices-table";
-import { DeviceRun, StatusFooter } from "../../../components/dashboard/device/StatusFooter";
+import { DeviceRun, StatusFooter } from "../../../components/dashboard/footer/StatusFooter"
 import { useDeviceConnectionStatus } from "../../../hooks/useDeviceConnectionStatus";
 import { syncDeviceManager } from "../../../managers/syncDeviceManager";
 
