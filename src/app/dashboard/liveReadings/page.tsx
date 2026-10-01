@@ -32,7 +32,7 @@ export default function Page(): React.JSX.Element {
 			setLoading("devices");
 			try {
 				const [fetchedDevices, fetchedProfiles] = await Promise.all([fetchDevices(), fetchProfiles()]);
-				setDevices(fetchedDevices ?? []);
+				setDevices(fetchedDevices.items ?? []);
 				setProfiles(fetchedProfiles ?? []);
 			} catch (error) {
 				console.error("Failed to fetch initial data:", error);

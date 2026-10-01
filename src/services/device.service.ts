@@ -8,7 +8,7 @@ export interface MeterTypeItem {
 
 export const fetchMeterTypes = async (): Promise<MeterTypeItem[]> => {
 	try {
-		const { data } = await apiClient.get<ApiResponse<MeterTypeItem[]>>("/device/meterTypes");
+		const { data } = await apiClient.get<ApiResponse<MeterTypeItem[]>>("/device/MeterTypes");
 
 		return data.data ?? [];
 	} catch (error) {
@@ -17,18 +17,61 @@ export const fetchMeterTypes = async (): Promise<MeterTypeItem[]> => {
 	}
 };
 // ============================================================
-// FETCH ALL DEVICES
+// FETCH DEVICES
 // ============================================================
 
-export const fetchDevices = async (): Promise<Device[]> => {
-	try {
-		const { data } = await apiClient.get<ApiResponse<Device[]>>("/device");
+export interface DeviceSearchRequest {
+    search?: string;
+    meterTypeId?: string;
+    scheduled?: string;
+    pageNumber?: number;
+    pageSize?: number;
+}
 
-		return data.data ?? [];
-	} catch (error) {
-		console.error("Error fetching devices:", error);
-		return [];
-	}
+export interface DevicePagedResult {
+    items: Device[];
+    pageNumber: number;
+    pageSize: number;
+    totalCount: number;
+    totalPages: number;
+}
+
+export const fetchDevices = async (
+    params: DeviceSearchRequest = {}
+): Promise<DevicePagedResult> => {
+    try {
+        const { data } = await apiClient.get<
+            ApiResponse<DevicePagedResult>
+        >("/device/GetAll", {
+            params: {
+                search: params.search || undefined,
+                meterTypeId: params.meterTypeId || undefined,
+                scheduled: params.scheduled || undefined,
+                pageNumber: params.pageNumber ?? 1,
+                pageSize: params.pageSize ?? 10,
+            },
+        });
+
+        return (
+            data.data ?? {
+                items: [],
+                pageNumber: params.pageNumber ?? 1,
+                pageSize: params.pageSize ?? 10,
+                totalCount: 0,
+                totalPages: 0,
+            }
+        );
+    } catch (error) {
+        console.error("Error fetching devices:", error);
+
+        return {
+            items: [],
+            pageNumber: params.pageNumber ?? 1,
+            pageSize: params.pageSize ?? 10,
+            totalCount: 0,
+            totalPages: 0,
+        };
+    }
 };
 
 // ============================================================
@@ -67,7 +110,7 @@ export const addDevice = async (device: Device): Promise<any | undefined> => {
 			DeviceSyncScheduleId: device.deviceSyncScheduleId ?? null,
 		};
 
-		const { data } = await apiClient.post<ApiResponse>("/device", payload);
+		const { data } = await apiClient.post<ApiResponse>("/device/GetAll", payload);
 
 		return data;
 	} catch (error) {

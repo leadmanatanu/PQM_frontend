@@ -58,7 +58,7 @@ export default function Page(): React.JSX.Element {
         try {
             const fetchedDevices = await fetchDevices();
 
-            setDevices(fetchedDevices ?? []);
+            setDevices(fetchedDevices.items ?? []);
             setProfiles([]);
         } catch (error) {
             console.error("Failed to fetch devices:", error);
