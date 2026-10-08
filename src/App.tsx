@@ -19,9 +19,9 @@ import "@/styles/global.css";
 
 import { useEffect } from "react";
 
-export default function App() {
-	
+import UserManagement from "./app/dashboard/user/page";
 
+export default function App() {
 	return (
 		<LocalizationProvider>
 			<UserProvider>
@@ -41,6 +41,7 @@ export default function App() {
 									<Route path="/dashboard/liveReadings" element={<LiveReadingsPage />} />
 
 									<Route path="/dashboard/report" element={<ReportPage />} />
+									<Route path="/dashboard/user" element={<UserManagement />} />
 									{/* Redirect /dashboard to /dashboard/devices */}
 									<Route path="/dashboard" element={<Navigate to="/dashboard/devices" replace />} />
 								</Route>
