@@ -21,57 +21,53 @@ export const fetchMeterTypes = async (): Promise<MeterTypeItem[]> => {
 // ============================================================
 
 export interface DeviceSearchRequest {
-    search?: string;
-    meterTypeId?: string;
-    scheduled?: string;
-    pageNumber?: number;
-    pageSize?: number;
+	search?: string;
+	meterTypeId?: string;
+	scheduled?: string;
+	pageNumber?: number;
+	pageSize?: number;
 }
 
 export interface DevicePagedResult {
-    items: Device[];
-    pageNumber: number;
-    pageSize: number;
-    totalCount: number;
-    totalPages: number;
+	items: Device[];
+	pageNumber: number;
+	pageSize: number;
+	totalCount: number;
+	totalPages: number;
 }
 
-export const fetchDevices = async (
-    params: DeviceSearchRequest = {}
-): Promise<DevicePagedResult> => {
-    try {
-        const { data } = await apiClient.get<
-            ApiResponse<DevicePagedResult>
-        >("/device/GetAll", {
-            params: {
-                search: params.search || undefined,
-                meterTypeId: params.meterTypeId || undefined,
-                scheduled: params.scheduled || undefined,
-                pageNumber: params.pageNumber ?? 1,
-                pageSize: params.pageSize ?? 10,
-            },
-        });
+export const fetchDevices = async (params: DeviceSearchRequest = {}): Promise<DevicePagedResult> => {
+	try {
+		const { data } = await apiClient.get<ApiResponse<DevicePagedResult>>("/device/GetAll", {
+			params: {
+				search: params.search || undefined,
+				meterTypeId: params.meterTypeId || undefined,
+				scheduled: params.scheduled || undefined,
+				pageNumber: params.pageNumber ?? 1,
+				pageSize: params.pageSize ?? 10,
+			},
+		});
 
-        return (
-            data.data ?? {
-                items: [],
-                pageNumber: params.pageNumber ?? 1,
-                pageSize: params.pageSize ?? 10,
-                totalCount: 0,
-                totalPages: 0,
-            }
-        );
-    } catch (error) {
-        console.error("Error fetching devices:", error);
+		return (
+			data.data ?? {
+				items: [],
+				pageNumber: params.pageNumber ?? 1,
+				pageSize: params.pageSize ?? 10,
+				totalCount: 0,
+				totalPages: 0,
+			}
+		);
+	} catch (error) {
+		console.error("Error fetching devices:", error);
 
-        return {
-            items: [],
-            pageNumber: params.pageNumber ?? 1,
-            pageSize: params.pageSize ?? 10,
-            totalCount: 0,
-            totalPages: 0,
-        };
-    }
+		return {
+			items: [],
+			pageNumber: params.pageNumber ?? 1,
+			pageSize: params.pageSize ?? 10,
+			totalCount: 0,
+			totalPages: 0,
+		};
+	}
 };
 
 // ============================================================
@@ -110,7 +106,7 @@ export const addDevice = async (device: Device): Promise<any | undefined> => {
 			DeviceSyncScheduleId: device.deviceSyncScheduleId ?? null,
 		};
 
-		const { data } = await apiClient.post<ApiResponse>("/device/GetAll", payload);
+		const { data } = await apiClient.post<ApiResponse>("/device/Add", payload);
 
 		return data;
 	} catch (error) {
@@ -157,7 +153,7 @@ export const editDevice = async (device: Device): Promise<any | undefined> => {
 			DeviceSyncScheduleId: device.deviceSyncScheduleId ?? null,
 		};
 
-		const { data } = await apiClient.put<ApiResponse>(`/device/${device.id}`, payload);
+		const { data } = await apiClient.put<ApiResponse>(`/device/Update/${device.id}`, payload);
 
 		return data;
 	} catch (error) {
