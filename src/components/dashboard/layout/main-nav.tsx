@@ -87,7 +87,7 @@ console.log("USER ID:", user?.id);
 					{/* Right section: Notification bell + User profile avatar */}
 					<Stack sx={{ alignItems: "center" }} direction="row" spacing={1.5}>
 
-					{user?.id && <Notification userId={Number(user.id)} />}
+					{user?.id && <Notification userId={Number(user.id.replace("USR-", ""))} />}
 
 					<Avatar
 						onClick={userPopover.handleOpen}

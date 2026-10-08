@@ -19,6 +19,7 @@ interface NotificationProps {
 export default function Notification({
   userId,
 }: NotificationProps) {
+  console.log("Notification userId:", userId);
   const [anchorEl, setAnchorEl] =
     useState<HTMLElement | null>(null);
 
