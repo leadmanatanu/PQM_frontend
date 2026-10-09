@@ -3,6 +3,7 @@ export interface Notification {
   title: string;
   message: string;
   type?: string;
+  severity: string;
   isRead: boolean;
   createdAt: string;
   readAt?: string;

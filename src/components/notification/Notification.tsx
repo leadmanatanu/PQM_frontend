@@ -191,6 +191,16 @@ export default function Notification({
                       {notification.message}
                     </Typography>
 
+                    {notification.severity && (
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ display: "block", mt: 0.5 }}
+                    >
+                      {notification.severity}
+                    </Typography>
+                  )}
+
                     <Typography
                       variant="caption"
                       color="text.secondary"
