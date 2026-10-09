@@ -12,7 +12,7 @@ export function useDevices() {
     setError(null);
     try {
       const data = await deviceService.fetchDevices();
-      setDevices(data);
+      setDevices(data.items);
     } catch (err: any) {
       setError(err.message || 'Failed to fetch devices');
     } finally {

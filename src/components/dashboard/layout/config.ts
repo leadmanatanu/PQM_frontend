@@ -6,4 +6,5 @@ export const navItems = [
 	{ key: "scheduling", title: "Scheduling", href: paths.dashboard.scheduling, icon: "clock" },
 	{ key: "devicereadings", title: "Live Reading", href: paths.dashboard.devicereadings, icon: "chat" },
 	{ key: "report", title: "Report", href: paths.dashboard.report, icon: "report" },
+	{ key: "user", title: "User", href: paths.dashboard.user, icon: "user" },
 ] satisfies NavItemConfig[];

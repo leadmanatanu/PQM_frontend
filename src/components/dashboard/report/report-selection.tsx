@@ -1,7 +1,9 @@
 "use client";
 
+import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import CheckBoxIcon from "@mui/icons-material/CheckBox";
 import CheckBoxOutlineBlankIcon from "@mui/icons-material/CheckBoxOutlineBlank";
+import ClearIcon from "@mui/icons-material/Clear";
 import {
 	Autocomplete,
 	Button,
@@ -15,9 +17,6 @@ import {
 } from "@mui/material";
 import Checkbox from "@mui/material/Checkbox";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
-// import { DateTimePicker } from "@mui/x-date-pickers/DateTimePicker";
-import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
-import ClearIcon from "@mui/icons-material/Clear";
 import { DateCalendar } from "@mui/x-date-pickers/DateCalendar";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { PickersDay } from "@mui/x-date-pickers/PickersDay";
@@ -134,13 +133,8 @@ export function ReportFilters({
 
 	// Clean up selected params if options change
 	useEffect(() => {
-		if (selectedParams.length === 0) return;
-		const validIds = new Set(filteredParameters.map((p: any) => p.id));
-		const stillValid = selectedParams.filter((p: any) => validIds.has(p.id));
-		if (stillValid.length !== selectedParams.length) {
-			setSelectedParams(stillValid);
-		}
-	}, [filteredParameters]);
+    setSelectedParams([]);
+}, [parameters]);
 
 	const [errors, setErrors] = useState({
 		device: false,
@@ -161,15 +155,15 @@ export function ReportFilters({
 
 	const handleProfileChange = (
     event: React.SyntheticEvent,
-    newValue: ProfileItem[]
-) => {
-    setSelectedProfiles(newValue);
-    setSelectedParams([]);
+			newValue: ProfileItem[]
+		) => {
+			setSelectedProfiles(newValue);
 
-    const profileIds = newValue.map((profile) => profile.id);
+			const profileIds = newValue.map((profile) => profile.id);
 
-    onProfileSelect(profileIds);
-};
+			onProfileSelect(profileIds);
+		};
+
 	const handleClearFilters = () => {
 	const today = dayjs();
 
@@ -473,9 +467,21 @@ export function ReportFilters({
 								size="small"
 								onClick={onExport}
 								disabled={!canExport || isSearching}
-								sx={{ height: 38, px: 2, textTransform: "none", fontWeight: 600 }}
+								sx={{ height: 38, px: 2, textTransform: "none", fontWeight: 600,
+									"&:focus": {
+										backgroundColor: "transparent",
+									},
+
+									"&:focus-visible": {
+										backgroundColor: "transparent",
+									},
+
+									"&:active": {
+										backgroundColor: "transparent",
+									},
+								 }}
 							>
-								Export CSV
+								Export Excel
 							</Button>
 							<Button
 								variant="contained"

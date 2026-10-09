@@ -7,7 +7,6 @@ import { Outlet } from "react-router-dom";
 import { AuthGuard } from "../../components/auth/auth-guard";
 import { MainNav } from "../../components/dashboard/layout/main-nav";
 import { SideNav } from "../../components/dashboard/layout/side-nav";
-
 export default function Layout(): React.JSX.Element {
 	const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
 	return (

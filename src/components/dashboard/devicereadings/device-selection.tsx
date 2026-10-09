@@ -1,6 +1,5 @@
 "use client";
 
-
 import CheckBoxIcon from "@mui/icons-material/CheckBox";
 import CheckBoxOutlineBlankIcon from "@mui/icons-material/CheckBoxOutlineBlank";
 import {
@@ -63,7 +62,10 @@ export function DeviceFilters({
 		device: false,
 	});
 
-	console.log(profiles);
+	// Unique key for a parameter row — the same parameter id can appear under
+	// more than one profile, so the profile must be part of the identity.
+	const getParamKey = (param: any) => `${param.profileId ?? "none"}-${param.id}`;
+
 	// Sync internal selectedDevice with prop changes
 	useEffect(() => {
 		if (selectedDeviceId && devices.length > 0) {
@@ -87,8 +89,8 @@ export function DeviceFilters({
 	// Synchronize selected parameters with current parameters list
 	useEffect(() => {
 		if (selectedParams.length > 0) {
-			const validIds = new Set(parameters.map((p: any) => p.id));
-			const filtered = selectedParams.filter((p: any) => validIds.has(p.id));
+			const validKeys = new Set(parameters.map((p: any) => getParamKey(p)));
+			const filtered = selectedParams.filter((p: any) => validKeys.has(getParamKey(p)));
 			if (filtered.length !== selectedParams.length) {
 				setSelectedParams(filtered);
 			}
@@ -118,7 +120,8 @@ export function DeviceFilters({
 		onScan({
 			deviceId: selectedDevice ? selectedDevice.id : null,
 			profileIds: selectedProfiles.map((p) => p.id),
-			paramIds: selectedParams.map((p: any) => p.id),
+			// Same parameter selected under two profiles must only be sent once.
+			paramIds: [...new Set(selectedParams.map((p: any) => p.id))],
 		});
 	};
 
@@ -220,7 +223,12 @@ export function DeviceFilters({
 									id="parameter-filter-autocomplete"
 									multiple
 									disableCloseOnSelect
-									options={parameters.length > 0 ? [{ id: "SELECT_ALL", name: "Select All" }, ...parameters] : []}
+									options={
+										parameters.length > 0
+											? [{ id: "SELECT_ALL", name: "Select All", profileId: null, profileName: "" }, ...parameters]
+											: []
+									}
+									groupBy={(option: any) => (option.id === "SELECT_ALL" ? "" : option.profileName || "General")}
 									size="small"
 									disabled={!selectedDevice || isLoadingParams}
 									getOptionLabel={(param) => param.name || ""}
@@ -237,7 +245,7 @@ export function DeviceFilters({
 											setSelectedParams(newValue);
 										}
 									}}
-									isOptionEqualToValue={(option, value) => option.id === value.id}
+									isOptionEqualToValue={(option: any, value: any) => getParamKey(option) === getParamKey(value)}
 									renderOption={(props, option, { selected }) => {
 										if (option.id === "SELECT_ALL") {
 											const allSelected = parameters.length > 0 && selectedParams.length === parameters.length;
@@ -260,7 +268,7 @@ export function DeviceFilters({
 											);
 										}
 										return (
-											<li {...props} key={option.id}>
+											<li {...props} key={getParamKey(option)}>
 												<Checkbox icon={icon} checkedIcon={checkedIcon} style={{ marginRight: 8 }} checked={selected} />
 												{option.name}
 											</li>

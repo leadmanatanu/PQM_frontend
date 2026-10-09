@@ -1,12 +1,9 @@
 "use client";
 
-import * as React from "react";
 import AddIcon from "@mui/icons-material/Add";
 import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
-import EditIcon from "@mui/icons-material/Edit";
 import RefreshIcon from "@mui/icons-material/Refresh";
-import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import {
 	Alert,
 	Autocomplete,
@@ -21,7 +18,6 @@ import {
 	DialogTitle,
 	FormControlLabel,
 	InputAdornment,
-	MenuItem,
 	OutlinedInput,
 	Paper,
 	Snackbar,
@@ -34,9 +30,10 @@ import {
 	TableHead,
 	TableRow,
 	TextField,
-	Typography,
+	Typography
 } from "@mui/material";
 import { MagnifyingGlassIcon } from "@phosphor-icons/react/dist/ssr/MagnifyingGlass";
+import * as React from "react";
 
 import { editDevice, fetchDevices } from "../../../api/device";
 import type { Device } from "../../../components/dashboard/device/devices-table";
@@ -49,6 +46,13 @@ import {
 } from "../../../services/schedule.service";
 
 export default function SchedulingPage(): React.JSX.Element {
+
+	const STATUS_STYLES = {
+  success:         { color: "#166534", background: "#DCFCE7" }, // green
+  failed:          { color: "#991B1B", background: "#FEE2E2" }, // red
+  "partial success": { color: "#9A3412", background: "#FFEDD5" }, // orange
+  running:         { color: "#1D4ED8", background: "#DBEAFE" }, // blue
+};
 	// Schedule data
 	const [schedules, setSchedules] = React.useState<DeviceScheduleItem[]>([]);
 
@@ -134,7 +138,7 @@ export default function SchedulingPage(): React.JSX.Element {
 			const [scheduleData, deviceData] = await Promise.all([fetchAllDeviceSchedules(), fetchDevices()]);
 
 			setSchedules(scheduleData ?? []);
-			setDevices(deviceData ?? []);
+			setDevices(deviceData.items ?? []);
 		} catch (err) {
 			console.error("Failed to load schedules/devices:", err);
 
@@ -923,16 +927,18 @@ export default function SchedulingPage(): React.JSX.Element {
 											<TableCell>
 												{row.lastRunStatus ? (
 													<Chip
-														size="small"
-														label={row.lastRunStatus}
-														color={row.lastRunStatus === "Success" ? "success" : "error"}
-														variant="outlined"
-														sx={{
-															height: 24,
-															"& .MuiChip-label": {
-																padding: "2px 5px",
-															},
-														}}
+													size="small"
+													label={row.lastRunStatus}
+													variant="outlined"
+													sx={{
+														height: 24,
+														color: STATUS_STYLES[row.lastRunStatus?.toLowerCase() as keyof typeof STATUS_STYLES]?.color,
+														backgroundColor:
+														STATUS_STYLES[row.lastRunStatus?.toLowerCase() as keyof typeof STATUS_STYLES]?.background,
+														"& .MuiChip-label": {
+														padding: "2px 5px",
+														},
+													}}
 													/>
 												) : (
 													<Chip

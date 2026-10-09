@@ -9,11 +9,17 @@ if (!apiBaseUrl) {
 }
 
 const serverUrl = apiBaseUrl.replace(/\/api\/?$/, "");
+
 const HUB_URL = `${serverUrl}/hubs/device`;
 
 class DeviceStatusHubService {
 	private connection: HubConnection | null = null;
 	private startPromise: Promise<void> | null = null;
+	private currentUserId: number | null = null;
+
+	// =========================================================
+	// GET / CREATE CONNECTION
+	// =========================================================
 
 	private getConnection(): HubConnection {
 		if (!this.connection) {
@@ -28,8 +34,27 @@ class DeviceStatusHubService {
 			});
 
 			this.connection.onreconnected(async () => {
-				console.log("SignalR reconnected");
-			});
+    console.log("SignalR reconnected");
+
+    if (this.currentUserId !== null) {
+        try {
+            await this.connection!.invoke(
+                "RegisterUser",
+                this.currentUserId
+            );
+
+            console.log(
+                "SignalR user registered again:",
+                this.currentUserId
+            );
+        } catch (error) {
+            console.error(
+                "Failed to register user after reconnect:",
+                error
+            );
+        }
+    }
+});
 
 			this.connection.onclose((error) => {
 				console.warn("SignalR connection closed", error);
@@ -38,6 +63,10 @@ class DeviceStatusHubService {
 
 		return this.connection;
 	}
+
+	// =========================================================
+	// START CONNECTION
+	// =========================================================
 
 	async start(): Promise<void> {
 		const connection = this.getConnection();
@@ -50,15 +79,38 @@ class DeviceStatusHubService {
 			return this.startPromise;
 		}
 
-		this.startPromise = connection
-			.start()
-
-			.finally(() => {
-				this.startPromise = null;
-			});
+		this.startPromise = connection.start().finally(() => {
+			this.startPromise = null;
+		});
 
 		return this.startPromise;
 	}
+
+	// register user
+
+async registerUser(userId: number): Promise<void> {
+    if (!Number.isInteger(userId) || userId <= 0) {
+        throw new Error("Invalid user ID");
+    }
+
+    await this.start();
+
+    const connection = this.getConnection();
+
+    if (connection.state !== HubConnectionState.Connected) {
+        throw new Error("SignalR is not connected");
+    }
+
+    this.currentUserId = userId;
+
+    await connection.invoke("RegisterUser", userId);
+
+    console.log("SignalR user registered:", userId);
+}
+
+	// =========================================================
+	// DEVICE SUBSCRIPTION
+	// =========================================================
 
 	async subscribeToDevices(deviceIds: number[]) {
 		await this.start();
@@ -98,10 +150,16 @@ class DeviceStatusHubService {
 		await connection.invoke("UnsubscribeFromDevices", ids);
 	}
 
+	// =========================================================
+	// DEVICE ONLINE / OFFLINE
+	// =========================================================
+
 	onDeviceStatusChanged(callback: (deviceId: number, isOnline: boolean) => void) {
 		const connection = this.getConnection();
 
 		const handler = (data: { deviceId: number; isOnline: boolean }) => {
+			console.log("📡 DeviceConnectionStatusChanged:", data);
+
 			callback(data.deviceId, data.isOnline);
 		};
 
@@ -111,6 +169,178 @@ class DeviceStatusHubService {
 			connection.off("DeviceConnectionStatusChanged", handler);
 		};
 	}
+
+	// =========================================================
+	// DEVICE LAST SYNC CHANGED
+	// =========================================================
+
+	onDeviceLastSyncChanged(callback: (data: { deviceId: number; lastSyncAt: string }) => void) {
+		const connection = this.getConnection();
+
+		const handler = (data: { deviceId: number; lastSyncAt: string }) => {
+			callback(data);
+		};
+
+		connection.on("DeviceLastSyncChanged", handler);
+
+		return () => {
+			connection.off("DeviceLastSyncChanged", handler);
+		};
+	}
+
+	// =========================================================
+	// SYNC STARTED
+	// =========================================================
+
+	onSyncStarted(callback: (data: any) => void) {
+		const connection = this.getConnection();
+
+		connection.on("SyncStarted", callback);
+
+		return () => {
+			connection.off("SyncStarted", callback);
+		};
+	}
+
+	// =========================================================
+	// SYNC PROGRESS
+	// =========================================================
+
+	onSyncProgress(callback: (data: any) => void) {
+		const connection = this.getConnection();
+
+		connection.on("SyncProgress", callback);
+
+		return () => {
+			connection.off("SyncProgress", callback);
+		};
+	}
+
+	// =========================================================
+	// SYNC COMPLETED
+	// =========================================================
+
+	onSyncCompleted(callback: (data: any) => void) {
+		const connection = this.getConnection();
+
+		connection.on("SyncCompleted", callback);
+
+		return () => {
+			connection.off("SyncCompleted", callback);
+		};
+	}
+
+	// =========================================================
+	// SYNC FAILED
+	// =========================================================
+
+	onSyncFailed(callback: (data: any) => void) {
+		const connection = this.getConnection();
+
+		connection.on("SyncFailed", callback);
+
+		return () => {
+			connection.off("SyncFailed", callback);
+		};
+	}
+
+	// =========================================================
+	// SYNC STOPPED
+	// =========================================================
+
+	onSyncStopped(callback: (data: any) => void) {
+		const connection = this.getConnection();
+
+		connection.on("SyncStopped", callback);
+
+		return () => {
+			connection.off("SyncStopped", callback);
+		};
+	}
+
+	// notification hub events
+
+// onNotificationReceived(callback: (notification: {
+//     id: number;
+//     title: string;
+//     message: string;
+//     type: string;
+//     severity: string;
+//     isRead: boolean;
+//     createdAt: string;
+// }) => void) {
+//     const connection = this.getConnection();
+
+//     console.log(
+//         "[SignalR] Registering ReceiveNotification listener",
+//         "Connection state:",
+//         connection.state
+//     );
+
+//     const handler = (notification: {
+//         id: number;
+//         title: string;
+//         message: string;
+//         type: string;
+//         severity: string;
+//         isRead: boolean;
+//         createdAt: string;
+//     }) => {
+//         console.log(
+//             "[SignalR] ReceiveNotification RECEIVED:",
+//             notification
+//         );
+
+//         callback(notification);
+
+//         console.log(
+//             "[SignalR] Notification callback executed:",
+//             notification.id
+//         );
+//     };
+
+//     connection.on("ReceiveNotification", handler);
+
+//     return () => {
+//         connection.off("ReceiveNotification", handler);
+//         console.log("[SignalR] ReceiveNotification listener removed");
+//     };
+// }
+
+onNotificationReceived(
+  callback: (notification: {
+    id: number;
+    title: string;
+    message: string;
+    type: string;
+    severity: string;
+    isRead: boolean;
+    createdAt: string;
+  }) => void
+) {
+  const connection = this.getConnection();
+
+  const handler = (notification: {
+    id: number;
+    title: string;
+    message: string;
+    type: string;
+    severity: string;
+    isRead: boolean;
+    createdAt: string;
+  }) => {
+    console.log("[CLIENT] Notification received:", notification);
+    callback(notification);
+  };
+
+  connection.on("ReceiveNotification", handler);
+
+  return () => {
+    connection.off("ReceiveNotification", handler);
+  };
+}
+
+
 }
 
 export const deviceStatusHub = new DeviceStatusHubService();

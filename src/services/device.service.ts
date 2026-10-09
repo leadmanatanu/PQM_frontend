@@ -8,7 +8,7 @@ export interface MeterTypeItem {
 
 export const fetchMeterTypes = async (): Promise<MeterTypeItem[]> => {
 	try {
-		const { data } = await apiClient.get<ApiResponse<MeterTypeItem[]>>("/device/meterTypes");
+		const { data } = await apiClient.get<ApiResponse<MeterTypeItem[]>>("/device/MeterTypes");
 
 		return data.data ?? [];
 	} catch (error) {
@@ -17,17 +17,56 @@ export const fetchMeterTypes = async (): Promise<MeterTypeItem[]> => {
 	}
 };
 // ============================================================
-// FETCH ALL DEVICES
+// FETCH DEVICES
 // ============================================================
 
-export const fetchDevices = async (): Promise<Device[]> => {
-	try {
-		const { data } = await apiClient.get<ApiResponse<Device[]>>("/device");
+export interface DeviceSearchRequest {
+	search?: string;
+	meterTypeId?: string;
+	scheduled?: string;
+	pageNumber?: number;
+	pageSize?: number;
+}
 
-		return data.data ?? [];
+export interface DevicePagedResult {
+	items: Device[];
+	pageNumber: number;
+	pageSize: number;
+	totalCount: number;
+	totalPages: number;
+}
+
+export const fetchDevices = async (params: DeviceSearchRequest = {}): Promise<DevicePagedResult> => {
+	try {
+		const { data } = await apiClient.get<ApiResponse<DevicePagedResult>>("/device/GetAll", {
+			params: {
+				search: params.search || undefined,
+				meterTypeId: params.meterTypeId || undefined,
+				scheduled: params.scheduled || undefined,
+				pageNumber: params.pageNumber ?? 1,
+				pageSize: params.pageSize ?? 10,
+			},
+		});
+
+		return (
+			data.data ?? {
+				items: [],
+				pageNumber: params.pageNumber ?? 1,
+				pageSize: params.pageSize ?? 10,
+				totalCount: 0,
+				totalPages: 0,
+			}
+		);
 	} catch (error) {
 		console.error("Error fetching devices:", error);
-		return [];
+
+		return {
+			items: [],
+			pageNumber: params.pageNumber ?? 1,
+			pageSize: params.pageSize ?? 10,
+			totalCount: 0,
+			totalPages: 0,
+		};
 	}
 };
 
@@ -67,7 +106,7 @@ export const addDevice = async (device: Device): Promise<any | undefined> => {
 			DeviceSyncScheduleId: device.deviceSyncScheduleId ?? null,
 		};
 
-		const { data } = await apiClient.post<ApiResponse>("/device", payload);
+		const { data } = await apiClient.post<ApiResponse>("/device/Add", payload);
 
 		return data;
 	} catch (error) {
@@ -114,7 +153,7 @@ export const editDevice = async (device: Device): Promise<any | undefined> => {
 			DeviceSyncScheduleId: device.deviceSyncScheduleId ?? null,
 		};
 
-		const { data } = await apiClient.put<ApiResponse>(`/device/${device.id}`, payload);
+		const { data } = await apiClient.put<ApiResponse>(`/device/Update/${device.id}`, payload);
 
 		return data;
 	} catch (error) {
@@ -175,6 +214,17 @@ export const syncDeviceNow = async (deviceId: string | number): Promise<any> => 
 				`Failed to trigger sync for device ${deviceId}.`,
 		};
 	}
+};
+
+// ============================================================
+// sync multiple devices
+// ============================================================
+export const syncDevicesNow = async (deviceIds: number[]) => {
+	const response = await apiClient.post("/multiple-devices/sync", {
+		deviceIds,
+	});
+
+	return response.data;
 };
 
 // ============================================================
@@ -309,6 +359,60 @@ export const saveDeviceConfiguration = async (id: string | number, parameterIds:
 // SCAN DEVICE
 // ============================================================
 
+// export const scanDevice = async (
+// 	deviceId: string | number,
+// 	profileIds?: number[] | null,
+// 	paramIds?: (string | number)[] | null
+// ): Promise<{
+// 	status: boolean;
+// 	data?: any;
+// 	error?: string;
+// 	isConcurrencyError?: boolean;
+// }> => {
+// 	try {
+// 		const { data } = await apiClient.post(`/device/${deviceId}/live-scan`, {
+// 			profileIds: profileIds && profileIds.length > 0 ? profileIds : null,
+// 			parameterIds: paramIds && paramIds.length > 0 ? paramIds : null,
+// 		});
+
+// 		if (!data?.status) {
+// 			return { status: false, error: data?.errors?.[0] || "Live scan failed." };
+// 		}
+
+// 		const result = data.data;
+// 		return {
+// 			status: true,
+// 			data: {
+// 				scannedAt: result.scannedAt,
+// 				deviceId: result.deviceId,
+// 				deviceName: result.deviceName,
+// 				items: (result.items ?? []).map((it: any) => ({
+// 					parameterId: it.parameterId,
+// 					parameterName: it.parameterName,
+// 					obisCode: it.obisCode,
+// 					value: it.value ?? "",
+// 					unit: it.unit,
+// 					error: it.error,
+// 				})),
+
+// 			},
+// 		};
+// 	} catch (error: any) {
+// 		if (error.response?.status === 409) {
+// 			return {
+// 				status: false,
+// 				error:
+// 					error.response.data?.errors?.[0] || "Device is currently syncing — please try scanning again in a moment",
+// 				isConcurrencyError: true,
+// 			};
+// 		}
+// 		return {
+// 			status: false,
+// 			error: error.response?.data?.errors?.[0] || error.message || "Failed to scan device live readings.",
+// 		};
+// 	}
+// };
+
 export const scanDevice = async (
 	deviceId: string | number,
 	profileIds?: number[] | null,
@@ -326,23 +430,36 @@ export const scanDevice = async (
 		});
 
 		if (!data?.status) {
-			return { status: false, error: data?.errors?.[0] || "Live scan failed." };
+			return {
+				status: false,
+				error: data?.errors?.[0] || "Live scan failed.",
+			};
 		}
 
 		const result = data.data;
+
 		return {
 			status: true,
 			data: {
 				scannedAt: result.scannedAt,
 				deviceId: result.deviceId,
 				deviceName: result.deviceName,
-				items: (result.items ?? []).map((it: any) => ({
-					parameterId: it.parameterId,
-					parameterName: it.parameterName,
-					obisCode: it.obisCode,
-					value: it.value ?? "",
-					unit: it.unit,
-					error: it.error,
+
+				// IMPORTANT: Keep groups from backend
+				groups: (result.groups ?? []).map((group: any) => ({
+					profileId: group.profileId,
+					profileName: group.profileName,
+
+					items: (group.items ?? []).map((it: any) => ({
+						parameterId: it.parameterId,
+						parameterName: it.parameterName,
+						obisCode: it.obisCode,
+						value: it.value ?? "",
+						unit: it.unit,
+						error: it.error,
+						profileId: it.profileId,
+						profileName: it.profileName,
+					})),
 				})),
 			},
 		};
@@ -355,6 +472,7 @@ export const scanDevice = async (
 				isConcurrencyError: true,
 			};
 		}
+
 		return {
 			status: false,
 			error: error.response?.data?.errors?.[0] || error.message || "Failed to scan device live readings.",

@@ -47,24 +47,61 @@ export const fetchDeviceReading = async (
 	}
 };
 
-// Fetch aggregated report readings (5, 15, 30 min intervals)
-export const fetchAggregatedReport = async (
-	deviceId?: string | number | null,
-	 profileIds?: number[],
-	objectType?: string | null,
-	parameterIds?: (string | number)[] | null,
-	startDate?: string,
-	endDate?: string,
-	intervalMinutes: number = 15,
-	pageNumber: number = 1,
-	pageSize: number = 20
+// Fetch profiles available for the selected device
+export const fetchProfilesByDevice = async (
+	deviceId: string | number
 ): Promise<any | null> => {
 	try {
-		const params: Record<string, any> = { pageNumber, pageSize, intervalMinutes };
+		const { data } = await apiClient.get<ApiResponse>("/report/profiles", {
+			params: { deviceId },
+		});
+
+		console.log("[fetchProfilesByDevice] response:", data);
+
+		return data;
+	} catch (error) {
+		console.error("Error fetching profiles by device:", error);
+		return null;
+	}
+};
+
+// Fetch parameters belonging to the selected profile
+export const fetchParametersByProfile = async (
+	profileId: string | number
+): Promise<any | null> => {
+	try {
+		const { data } = await apiClient.get<ApiResponse>("/report/parameters", {
+			params: { profileId },
+		});
+
+		console.log("[fetchParametersByProfile] response:", data);
+
+		return data;
+	} catch (error) {
+		console.error("Error fetching parameters by profile:", error);
+		return null;
+	}
+};
+
+// Fetch aggregated report readings grouped by profile.
+// BlockLoad profile is paginated by timestamp.
+export const fetchAggregatedReport = async (
+    deviceId?: string | number | null,
+    profileIds?: number[],
+    objectType?: string | null,
+    parameterIds?: (string | number)[] | null,
+    startDate?: string,
+    endDate?: string,
+    intervalMinutes: number = 15,
+    pageNumber: number = 1,
+    pageSize: number = 96
+): Promise<any | null> => {
+	try {
+		const params: Record<string, any> = { intervalMinutes, pageNumber, pageSize };
 		if (deviceId && Number(deviceId) > 0) params.deviceId = deviceId;
 		if (profileIds && profileIds.length > 0) {
-    params.profileIds = profileIds.map(Number).filter((id) => id > 0);
-}
+			params.profileIds = profileIds.map(Number).filter((id) => id > 0);
+		}
 		if (objectType && objectType !== "All") params.objectType = objectType;
 		if (startDate) params.startDate = startDate;
 		if (endDate) params.endDate = endDate;
@@ -87,6 +124,10 @@ export const fetchAggregatedReport = async (
 				return parts.join("&");
 			},
 		});
+
+		// eslint-disable-next-line no-console
+		console.log("[fetchAggregatedReport] response from /report/aggregate:", data);
+
 		return data;
 	} catch (error) {
 		console.error("Error fetching aggregated report:", error);
@@ -121,39 +162,71 @@ export const exportDeviceReading = (
 };
 
 // Trigger export of aggregated report (Excel)
-export const exportAggregatedReport = (
-	deviceId?: string | number | null,
-	profileIds?: number[],
-	objectType?: string | null,
-	parameterIds?: (string | number)[] | null,
-	startDate?: string,
-	endDate?: string,
-	intervalMinutes: number = 15
-): void => {
-	const params = new URLSearchParams();
-	if (deviceId && Number(deviceId) > 0) params.append("deviceId", String(deviceId));
-	if (profileIds && profileIds.length > 0) {
-    profileIds.forEach((id) => {
-        if (Number(id) > 0) {
-            params.append("profileIds", String(id));
+
+export const exportAggregatedReport = async (
+    deviceId?: string | number | null,
+    profileIds?: number[],
+    objectType?: string | null,
+    parameterIds?: (string | number)[] | null,
+    startDate?: string,
+    endDate?: string,
+    intervalMinutes: number = 15
+): Promise<Blob> => {
+    try {
+        const params = new URLSearchParams();
+
+        if (deviceId && Number(deviceId) > 0) {
+            params.append("deviceId", String(deviceId));
         }
-    });
-}
-	if (objectType && objectType !== "All") params.append("objectType", objectType);
-	if (startDate) params.append("startDate", startDate);
-	if (endDate) params.append("endDate", endDate);
-	params.append("intervalMinutes", String(intervalMinutes));
 
-	if (parameterIds && parameterIds.length > 0) {
-		parameterIds.forEach((id) => {
-			if (Number(id) > 0) params.append("parameterIds", String(id));
-		});
-	}
+        profileIds?.forEach((id) => {
+            if (Number(id) > 0) {
+                params.append("profileIds", String(id));
+            }
+        });
 
-	const downloadUrl = `${apiClient}/report/export?${params.toString()}`;
-	window.open(downloadUrl, "_blank");
+        if (objectType && objectType !== "All") {
+            params.append("objectType", objectType);
+        }
+
+        parameterIds?.forEach((id) => {
+            if (Number(id) > 0) {
+                params.append("parameterIds", String(id));
+            }
+        });
+
+        if (startDate) {
+            params.append("startDate", startDate);
+        }
+
+        if (endDate) {
+            params.append("endDate", endDate);
+        }
+
+        params.append("intervalMinutes", String(intervalMinutes));
+
+        // Call backend export API
+        const response = await apiClient.get(
+            `/report/export?${params.toString()}`,
+            {
+                responseType: "blob",
+            }
+        );
+
+        // Return Excel file as Blob.
+        // Save As is handled by page.tsx.
+        return new Blob([response.data], {
+            type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        });
+    } catch (error) {
+        console.error(
+            "Error exporting aggregated report:",
+            error
+        );
+
+        throw error;
+    }
 };
-
 // Fetch event readings
 export const fetchEventReading = async (
 	deviceId: string | number,

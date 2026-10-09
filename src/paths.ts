@@ -6,6 +6,7 @@ export const paths = {
 		scheduling: "/dashboard/scheduling",
 		devicereadings: "/dashboard/liveReadings",
 		report: "/dashboard/report",
+		user: "/dashboard/user",
 	},
 	errors: { notFound: "/errors/not-found" },
 } as const;
